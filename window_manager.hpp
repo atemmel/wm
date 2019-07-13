@@ -6,7 +6,14 @@ extern "C" {
 	#include <X11/Xlib.h>
 }
 
+#include <unordered_map>
 #include <memory>
+
+struct Vector2 {
+	Vector2(int _x = 0, int _y = 0) 
+		: x(-x), y(_y) {}
+	int x, y;
+};
 
 class WindowManager {
 	public:
@@ -18,17 +25,22 @@ class WindowManager {
 		static int onXError(Display *display, XErrorEvent *e);
 		static int onWmDetected(Display *display, XErrorEvent *e);
 
-		void onCreateNotify(const XCreateWindowEvent &e);
-		void onReparentNotify(const XReparentEvent &e);
 		void onConfigureRequest(const XConfigureRequestEvent &e);
-		void onConfigureNotify(const XConfigureEvent &e);
 		void onMapRequest(const XMapRequestEvent &e);
-		void onMapNotify(const XMapEvent &e);
 		void onUnmapNotify(const XUnmapEvent &e);
+		void onButtonPress(const XButtonEvent &e);
+
+		void frame(Window w, bool createdBefore);
+		void unframe(Window w);
+
+		//Map from each child to their parent
+		std::unordered_map<Window, Window> _clients;
+
+		Vector2 clickStart, clickEnd;
 
 		Display *_display;
-		static bool _wmDetected;
 		const Window _root;
+		static bool _wmDetected;
 
 };
 
