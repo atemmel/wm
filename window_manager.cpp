@@ -85,6 +85,16 @@ void WindowManager::run() {
 				break;
 			case EnterNotify:
 				onEnterNotify(e.xcrossing);
+			case MotionNotify:
+
+				//Waste all MotionNotify events but the latest
+				while(XCheckTypedWindowEvent(
+							_display,
+							e.xmotion.window,
+							MotionNotify,
+							&e));
+
+				onMotionNotify(e.xmotion);
 				break;
 			case CreateNotify:
 			case DestroyNotify:
@@ -147,7 +157,7 @@ void WindowManager::onButtonPress(const XButtonEvent &e) {
 	const Window frame = _clients[e.window];
 	LOG(INFO) << "Click in window " << std::to_string(e.window);
 
-	clickStart = {e.x_root, e.y_root};
+	startCursorPos = {e.x_root, e.y_root};
 
 	Window returned;
 	Vector2 pos;
@@ -162,7 +172,12 @@ void WindowManager::onButtonPress(const XButtonEvent &e) {
 			&border,
 			&depth);
 
-	focus(e.window);
+	startWindowPos = pos;
+	startWindowSize = {
+		static_cast<int>(w), 
+		static_cast<int>(h)};
+
+	//focus(e.window);
 }
 
 void WindowManager::onFocusIn(const XFocusChangeEvent &e) {
@@ -172,6 +187,33 @@ void WindowManager::onFocusIn(const XFocusChangeEvent &e) {
 void WindowManager::onEnterNotify(const XEnterWindowEvent &e) {
 	LOG(INFO) << "Entered window " << std::to_string(e.window);
 	focus(e.window);
+}
+
+void WindowManager::onMotionNotify(const XMotionEvent &e) {
+	LOG(INFO) << "Motion in window " << std::to_string(e.window);
+
+	const Vector2 cursorPos = {e.x_root, e.y_root};
+	const Window frame = _clients[e.window];
+
+	if(e.state & Button1Mask) {	//Move window
+		const Vector2 delta = cursorPos - startCursorPos ;
+		const Vector2 newPos = startWindowPos + delta;
+		XMoveWindow(
+				_display,
+				frame,
+				newPos.x,
+				newPos.y);
+
+	}
+	else if(e.state & Button2Mask) { //Resize window
+		/*
+		const Vector2 delta = {
+			std::max(cursorPos.x - startCursorPos.x, 40),
+			std::max(cursorPos.y - startCursorPos.y, 40)};
+		const Vector2 newSize = startWindowSize + delta;
+		*/
+	}
+	//XMoveWindow();
 }
 
 void WindowManager::focus(Window w) {
@@ -229,10 +271,10 @@ void WindowManager::frame(Window w, bool createdBefore) {
 	XGrabButton(
 			_display,
 			Button1,
-			None,
+			Mod1Mask,
 			w,
 			false,
-			ButtonPressMask,
+			ButtonPressMask | ButtonMotionMask,
 			GrabModeAsync,
 			GrabModeAsync,
 			None,

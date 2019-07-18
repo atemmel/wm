@@ -12,6 +12,15 @@ extern "C" {
 struct Vector2 {
 	Vector2(int _x = 0, int _y = 0) 
 		: x(_x), y(_y) {}
+
+	Vector2 operator+(Vector2 lhs) const {
+		return {x + lhs.x, y + lhs.y};
+	}
+
+	Vector2 operator-(Vector2 lhs) const {
+		return {x - lhs.x, y - lhs.y};
+	}
+
 	int x, y;
 };
 
@@ -31,6 +40,7 @@ class WindowManager {
 		void onButtonPress(const XButtonEvent &e);
 		void onFocusIn(const XFocusChangeEvent &e);
 		void onEnterNotify(const XEnterWindowEvent &e);
+		void onMotionNotify(const XMotionEvent &e);
 
 		void focus(Window w);
 		void frame(Window w, bool createdBefore);
@@ -39,7 +49,7 @@ class WindowManager {
 		//Map from each child to their parent
 		std::unordered_map<Window, Window> _clients;
 
-		Vector2 clickStart, clickEnd;
+		Vector2 startCursorPos, startWindowPos, startWindowSize;
 
 		Display *_display;
 		const Window _root;
