@@ -10,14 +10,14 @@ extern "C" {
 #include <memory>
 
 struct Vector2 {
-	Vector2(int _x = 0, int _y = 0) 
+	constexpr Vector2(int _x = 0, int _y = 0) 
 		: x(_x), y(_y) {}
 
-	Vector2 operator+(Vector2 lhs) const {
+	constexpr Vector2 operator+(const Vector2 lhs) const {
 		return {x + lhs.x, y + lhs.y};
 	}
 
-	Vector2 operator-(Vector2 lhs) const {
+	constexpr Vector2 operator-(const Vector2 lhs) const {
 		return {x - lhs.x, y - lhs.y};
 	}
 

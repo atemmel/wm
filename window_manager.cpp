@@ -196,7 +196,7 @@ void WindowManager::onMotionNotify(const XMotionEvent &e) {
 	const Window frame = _clients[e.window];
 
 	if(e.state & Button1Mask) {	//Move window
-		const Vector2 delta = cursorPos - startCursorPos ;
+		const Vector2 delta = cursorPos - startCursorPos;
 		const Vector2 newPos = startWindowPos + delta;
 		XMoveWindow(
 				_display,
@@ -206,15 +206,18 @@ void WindowManager::onMotionNotify(const XMotionEvent &e) {
 
 	}
 	else if(e.state & Button3Mask) { //Resize window
-		const Vector2 delta = {
-			std::max(cursorPos.x - startCursorPos.x, 0),
-			std::max(cursorPos.y - startCursorPos.y, 0)};
-		const Vector2 newSize = startWindowSize + delta;
+		constexpr int minWinSize = 64;
+		const Vector2 delta = cursorPos - startCursorPos;
+		const Vector2 newSize = {
+			std::max(startWindowSize.x + delta.x, minWinSize),
+			std::max(startWindowSize.y + delta.y, minWinSize)};
 
+		//One for the window
 		XResizeWindow(
 				_display,
 				e.window,
 				newSize.x, newSize.y);
+		//One for the border
 		XResizeWindow(
 				_display,
 				frame,
