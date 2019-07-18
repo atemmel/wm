@@ -11,7 +11,7 @@ extern "C" {
 
 struct Vector2 {
 	Vector2(int _x = 0, int _y = 0) 
-		: x(-x), y(_y) {}
+		: x(_x), y(_y) {}
 	int x, y;
 };
 
@@ -29,7 +29,10 @@ class WindowManager {
 		void onMapRequest(const XMapRequestEvent &e);
 		void onUnmapNotify(const XUnmapEvent &e);
 		void onButtonPress(const XButtonEvent &e);
+		void onFocusIn(const XFocusChangeEvent &e);
+		void onEnterNotify(const XEnterWindowEvent &e);
 
+		void focus(Window w);
 		void frame(Window w, bool createdBefore);
 		void unframe(Window w);
 

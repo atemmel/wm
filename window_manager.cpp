@@ -1,5 +1,7 @@
 #include "window_manager.hpp"
 #include <glog/logging.h>
+
+#include <iostream>
 #include <string>
 
 bool WindowManager::_wmDetected = false;
@@ -31,7 +33,8 @@ void WindowManager::run() {
 			SubstructureRedirectMask | SubstructureNotifyMask);
 	XSync(_display, false);	//Flush errors
 	if(_wmDetected) {
-		LOG(ERROR) << "Detected another window manager on display " << XDisplayString(_display);
+		LOG(ERROR) << "Detected another window manager on display " 
+			<< XDisplayString(_display);
 		return;
 	}
 	//Set regular error handler
@@ -77,6 +80,12 @@ void WindowManager::run() {
 			case ButtonPress:
 				onButtonPress(e.xbutton);
 				break;
+			case FocusIn:
+				onFocusIn(e.xfocus);
+				break;
+			case EnterNotify:
+				onEnterNotify(e.xcrossing);
+				break;
 			case CreateNotify:
 			case DestroyNotify:
 			case ReparentNotify:
@@ -117,6 +126,7 @@ void WindowManager::onConfigureRequest(const XConfigureRequestEvent &e) {
 void WindowManager::onMapRequest(const XMapRequestEvent &e) {
 	frame(e.window, false);
 	XMapWindow(_display, e.window);
+	focus(e.window);
 }
 
 void WindowManager::onUnmapNotify(const XUnmapEvent &e) {
@@ -135,6 +145,7 @@ void WindowManager::onUnmapNotify(const XUnmapEvent &e) {
 
 void WindowManager::onButtonPress(const XButtonEvent &e) {
 	const Window frame = _clients[e.window];
+	LOG(INFO) << "Click in window " << std::to_string(e.window);
 
 	clickStart = {e.x_root, e.y_root};
 
@@ -151,13 +162,27 @@ void WindowManager::onButtonPress(const XButtonEvent &e) {
 			&border,
 			&depth);
 
-	XRaiseWindow(_display, frame);
+	focus(e.window);
+}
+
+void WindowManager::onFocusIn(const XFocusChangeEvent &e) {
+	std::cerr << "Focus changed" << e.window << '\n';
+}
+
+void WindowManager::onEnterNotify(const XEnterWindowEvent &e) {
+	LOG(INFO) << "Entered window " << std::to_string(e.window);
+	focus(e.window);
+}
+
+void WindowManager::focus(Window w) {
+	XRaiseWindow(_display, w);
+	XSetInputFocus(_display, w, RevertToParent, CurrentTime);
 }
 
 void WindowManager::frame(Window w, bool createdBefore) {
 	constexpr unsigned int borderWidth = 3;
-	constexpr unsigned long borderColor = 0xff0000;
-	constexpr unsigned long bgColor = 0x0000ff;
+	constexpr unsigned long borderColor = 0xff00ff;
+	constexpr unsigned long bgColor = 0x000000;
 
 	XWindowAttributes attrs;
 	CHECK(XGetWindowAttributes(_display, w, &attrs) );
@@ -185,23 +210,33 @@ void WindowManager::frame(Window w, bool createdBefore) {
 			frame,
 			SubstructureRedirectMask | SubstructureNotifyMask);
 
+	XSelectInput(
+			_display,
+			w,
+			EnterWindowMask);
+
 	XAddToSaveSet(_display, w);
+
+	XReparentWindow(
+			_display,
+			w,
+			frame,
+			0, 0);
+
+	XMapWindow(_display, frame);
 	_clients[w] = frame;
 
 	XGrabButton(
 			_display,
 			Button1,
-			AnyModifier,
+			None,
 			w,
-			True,
+			false,
 			ButtonPressMask,
 			GrabModeAsync,
 			GrabModeAsync,
 			None,
 			None);
-	//XGrabButtin();
-	//XGrabKey();
-	//XGrabKey();
 
 	LOG(INFO) << "Framed window " << w << " [" << frame << ']';
 }
