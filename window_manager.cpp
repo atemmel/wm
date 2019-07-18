@@ -205,15 +205,21 @@ void WindowManager::onMotionNotify(const XMotionEvent &e) {
 				newPos.y);
 
 	}
-	else if(e.state & Button2Mask) { //Resize window
-		/*
+	else if(e.state & Button3Mask) { //Resize window
 		const Vector2 delta = {
-			std::max(cursorPos.x - startCursorPos.x, 40),
-			std::max(cursorPos.y - startCursorPos.y, 40)};
+			std::max(cursorPos.x - startCursorPos.x, 0),
+			std::max(cursorPos.y - startCursorPos.y, 0)};
 		const Vector2 newSize = startWindowSize + delta;
-		*/
+
+		XResizeWindow(
+				_display,
+				e.window,
+				newSize.x, newSize.y);
+		XResizeWindow(
+				_display,
+				frame,
+				newSize.x, newSize.y);
 	}
-	//XMoveWindow();
 }
 
 void WindowManager::focus(Window w) {
@@ -271,6 +277,18 @@ void WindowManager::frame(Window w, bool createdBefore) {
 	XGrabButton(
 			_display,
 			Button1,
+			Mod1Mask,
+			w,
+			false,
+			ButtonPressMask | ButtonMotionMask,
+			GrabModeAsync,
+			GrabModeAsync,
+			None,
+			None);
+
+	XGrabButton(
+			_display,
+			Button3,
 			Mod1Mask,
 			w,
 			false,
