@@ -1,5 +1,5 @@
 #include "window_manager.hpp"
-#include <glog/logging.h>
+#include <glog/logging.h>	/* TODO: Remove dependency */
 
 #include <iostream>
 #include <string>
@@ -61,6 +61,7 @@ void WindowManager::run() {
 	XFree(topLevel);
 	XUngrabServer(_display);
 
+	//TODO: Log "All OK" message
 	/*	Loop	*/
 	while(true) {
 		XEvent e;
@@ -85,8 +86,8 @@ void WindowManager::run() {
 				break;
 			case EnterNotify:
 				onEnterNotify(e.xcrossing);
+				break;
 			case MotionNotify:
-
 				//Waste all MotionNotify events but the latest
 				while(XCheckTypedWindowEvent(
 							_display,
@@ -107,7 +108,9 @@ void WindowManager::run() {
 	}
 }
 
-int WindowManager::onXError(Display *display, XErrorEvent *e) { return 0; }
+int WindowManager::onXError(Display *display, XErrorEvent *e) { 
+	return 0; 
+}
 
 int WindowManager::onWmDetected(Display *display, XErrorEvent *e) {
 	CHECK_EQ(static_cast<int>(e->error_code), BadAccess);
@@ -277,6 +280,7 @@ void WindowManager::frame(Window w, bool createdBefore) {
 	XMapWindow(_display, frame);
 	_clients[w] = frame;
 
+	//Grab Alt + LMB
 	XGrabButton(
 			_display,
 			Button1,
@@ -289,6 +293,7 @@ void WindowManager::frame(Window w, bool createdBefore) {
 			None,
 			None);
 
+	//Grab Alt + RMB
 	XGrabButton(
 			_display,
 			Button3,

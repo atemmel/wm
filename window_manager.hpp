@@ -9,6 +9,7 @@ extern "C" {
 #include <unordered_map>
 #include <memory>
 
+//TODO: Move into separate implementation
 struct Vector2 {
 	constexpr Vector2(int _x = 0, int _y = 0) 
 		: x(_x), y(_y) {}
@@ -46,7 +47,7 @@ class WindowManager {
 		void frame(Window w, bool createdBefore);
 		void unframe(Window w);
 
-		//Map from each child to their parent
+		//Map from each window to their respective border
 		std::unordered_map<Window, Window> _clients;
 
 		Vector2 startCursorPos, startWindowPos, startWindowSize;
