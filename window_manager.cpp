@@ -175,7 +175,7 @@ void WindowManager::run() {
 }
 
 int WindowManager::onXError(Display *display, XErrorEvent *e) { 
-	std::cout << "X error: " << e->error_code << " : " << std::hex << e->error_code << '\n';
+	std::cout << "X error: " << e->request_code << " : " << std::hex << e->request_code << '\n';
 	return 0; 
 }
 
@@ -405,6 +405,7 @@ void WindowManager::switchWorkspace(int index) {
 	for(auto &pair : _clients) {
 		if(pair.second.workspace == _currentWorkspace) {
 			show(pair.second);
+			focus(pair.first);
 		}
 	}
 }
