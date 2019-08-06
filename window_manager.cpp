@@ -66,7 +66,8 @@ void WindowManager::run() {
 	Screen *screen = XDefaultScreenOfDisplay(_display);
 
 	KeyCode left = XKeysymToKeycode(_display, XK_H),
-			right = XKeysymToKeycode(_display, XK_L);
+			right = XKeysymToKeycode(_display, XK_L),
+			enter = XKeysymToKeycode(_display, XK_Return);
 
 	XGrabKey(_display,
 			left,
@@ -78,6 +79,14 @@ void WindowManager::run() {
 
 	XGrabKey(_display,
 			right,
+			AnyModifier,
+			_root,
+			False,
+			GrabModeAsync,
+			GrabModeAsync);
+
+	XGrabKey(_display,
+			enter,
 			AnyModifier,
 			_root,
 			False,
@@ -102,6 +111,12 @@ void WindowManager::run() {
 						<< _currentWorkspace + 1 << '\n';
 					switchWorkspace(_currentWorkspace + 1);
 				}
+			}});
+
+	_binds.insert(
+			{enter, 
+			[&]() {
+				system("urxvt &");
 			}});
 
 	//TODO: Log "All OK" message
@@ -281,7 +296,8 @@ void WindowManager::onMotionNotify(const XMotionEvent &e) {
 }
 
 void WindowManager::focus(Window w) {
-	XRaiseWindow(_display, w);
+	const WindowMeta meta = _clients[w];
+	XRaiseWindow(_display, meta.border);
 	XSetInputFocus(_display, w, RevertToParent, CurrentTime);
 }
 
@@ -411,8 +427,8 @@ void WindowManager::show(WindowMeta &meta) {
 	XWindowAttributes xattr;
 
 	XMoveWindow(
-			_display,
-			meta.border,
-			meta.restore.x,
-			meta.restore.y);
+		_display,
+		meta.border,
+		meta.restore.x,
+		meta.restore.y);
 }
