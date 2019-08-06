@@ -7,6 +7,7 @@ extern "C" {
 }
 
 #include <unordered_map>
+#include <functional>
 #include <memory>
 
 //TODO: Move into separate implementation
@@ -23,6 +24,11 @@ struct Vector2 {
 	}
 
 	int x, y;
+};
+
+struct WindowMeta {
+	Window border;	//Handle to border
+	int workspace;
 };
 
 class WindowManager {
@@ -46,16 +52,27 @@ class WindowManager {
 		void focus(Window w);
 		void frame(Window w, bool createdBefore);
 		void unframe(Window w);
+		void switchWorkspace(int index);
+		void hide(WindowMeta meta);
+		void show(WindowMeta meta);
 
 		//Map from each window to their respective border
-		std::unordered_map<Window, Window> _clients;
+		std::unordered_map<Window, WindowMeta> _clients;
+		std::unordered_map<KeyCode, std::function<void()> > _binds;
 
 		Vector2 startCursorPos, startWindowPos, startWindowSize;
 
 		Display *_display;
+		Screen *_screen;
 		const Window _root;
 		static bool _wmDetected;
 
+		int _currentWorkspace = 0;
+
+		constexpr static auto ModifierMask = Mod1Mask;
+		constexpr static unsigned int borderWidth = 3;
+		constexpr static unsigned long borderColor = 0xff00ff;
+		constexpr static unsigned long bgColor = 0x000000;
 };
 
 #endif

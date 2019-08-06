@@ -1,5 +1,7 @@
 #include "window_manager.hpp"
+
 #include <glog/logging.h>	/* TODO: Remove dependency */
+#include <X11/Xutil.h>
 
 #include <iostream>
 #include <string>
@@ -61,12 +63,53 @@ void WindowManager::run() {
 	XFree(topLevel);
 	XUngrabServer(_display);
 
+	Screen *screen = XDefaultScreenOfDisplay(_display);
+
+	KeyCode left = XKeysymToKeycode(_display, XK_H),
+			right = XKeysymToKeycode(_display, XK_L);
+
+	XGrabKey(_display,
+			left,
+			AnyModifier,
+			_root,
+			False,
+			GrabModeAsync,
+			GrabModeAsync);
+
+	XGrabKey(_display,
+			right,
+			AnyModifier,
+			_root,
+			False,
+			GrabModeAsync,
+			GrabModeAsync);
+
+	_binds.insert(
+			{left, 
+			[&]() {
+				if(_currentWorkspace > 0) {
+					std::cout << "Switching to workspace "
+						<< _currentWorkspace - 1 << '\n';
+					switchWorkspace(_currentWorkspace - 1);
+				}
+			}});
+
+	_binds.insert(
+			{right, 
+			[&]() {
+				if(_currentWorkspace < 3) {
+					std::cout << "Switching to workspace "
+						<< _currentWorkspace + 1 << '\n';
+					switchWorkspace(_currentWorkspace + 1);
+				}
+			}});
+
 	//TODO: Log "All OK" message
 	/*	Loop	*/
 	while(true) {
 		XEvent e;
 		XNextEvent(_display, &e);
-		LOG(INFO) << "Recieved event: " << std::to_string(e.type);
+		//LOG(INFO) << "Recieved event: " << std::to_string(e.type);
 
 		switch(e.type) {
 			case ConfigureRequest:
@@ -97,18 +140,27 @@ void WindowManager::run() {
 
 				onMotionNotify(e.xmotion);
 				break;
+			case KeyPress:
+				if(e.xkey.state & ModifierMask) {
+					if(auto it = _binds.find(e.xkey.keycode); it != _binds.end() ) {
+						it->second();
+					}
+				}
+				break;
 			case CreateNotify:
 			case DestroyNotify:
 			case ReparentNotify:
 			case ConfigureNotify:
 			case MapNotify:
 			default:
-				LOG(WARNING) << "Ignored event";
+				//LOG(WARNING) << "Ignored event";
+				break;
 		}
 	}
 }
 
 int WindowManager::onXError(Display *display, XErrorEvent *e) { 
+	std::cout << "X error: " << e->error_code << " : " << std::hex << e->error_code << '\n';
 	return 0; 
 }
 
@@ -129,7 +181,7 @@ void WindowManager::onConfigureRequest(const XConfigureRequestEvent &e) {
 	changes.stack_mode = e.detail;
 
 	if(_clients.count(e.window)) {
-		const Window frame = _clients[e.window];
+		//const Window frame = _clients[e.window];
 		XConfigureWindow(_display, e.window, e.value_mask, &changes);
 		LOG(INFO) << "Resize " << e.window << " to w:" 
 			<< std::to_string(e.width) << " h:" << std::to_string(e.height);
@@ -157,7 +209,7 @@ void WindowManager::onUnmapNotify(const XUnmapEvent &e) {
 }
 
 void WindowManager::onButtonPress(const XButtonEvent &e) {
-	const Window frame = _clients[e.window];
+	const WindowMeta meta = _clients[e.window];
 	LOG(INFO) << "Click in window " << std::to_string(e.window);
 
 	startCursorPos = {e.x_root, e.y_root};
@@ -168,7 +220,7 @@ void WindowManager::onButtonPress(const XButtonEvent &e) {
 
 	XGetGeometry(
 			_display,
-			frame,
+			meta.border,
 			&returned,
 			&pos.x, &pos.y,
 			&w, &h,
@@ -193,17 +245,17 @@ void WindowManager::onEnterNotify(const XEnterWindowEvent &e) {
 }
 
 void WindowManager::onMotionNotify(const XMotionEvent &e) {
-	LOG(INFO) << "Motion in window " << std::to_string(e.window);
+	//LOG(INFO) << "Motion in window " << std::to_string(e.window);
 
 	const Vector2 cursorPos = {e.x_root, e.y_root};
-	const Window frame = _clients[e.window];
+	const WindowMeta meta = _clients[e.window];
 
 	if(e.state & Button1Mask) {	//Move window
 		const Vector2 delta = cursorPos - startCursorPos;
 		const Vector2 newPos = startWindowPos + delta;
 		XMoveWindow(
 				_display,
-				frame,
+				meta.border,
 				newPos.x,
 				newPos.y);
 
@@ -223,7 +275,7 @@ void WindowManager::onMotionNotify(const XMotionEvent &e) {
 		//One for the border
 		XResizeWindow(
 				_display,
-				frame,
+				meta.border,
 				newSize.x, newSize.y);
 	}
 }
@@ -234,9 +286,6 @@ void WindowManager::focus(Window w) {
 }
 
 void WindowManager::frame(Window w, bool createdBefore) {
-	constexpr unsigned int borderWidth = 3;
-	constexpr unsigned long borderColor = 0xff00ff;
-	constexpr unsigned long bgColor = 0x000000;
 
 	XWindowAttributes attrs;
 	CHECK(XGetWindowAttributes(_display, w, &attrs) );
@@ -278,13 +327,13 @@ void WindowManager::frame(Window w, bool createdBefore) {
 			0, 0);
 
 	XMapWindow(_display, frame);
-	_clients[w] = frame;
+	_clients[w] = {frame, _currentWorkspace };
 
 	//Grab Alt + LMB
 	XGrabButton(
 			_display,
 			Button1,
-			Mod1Mask,
+			ModifierMask,
 			w,
 			false,
 			ButtonPressMask | ButtonMotionMask,
@@ -297,7 +346,7 @@ void WindowManager::frame(Window w, bool createdBefore) {
 	XGrabButton(
 			_display,
 			Button3,
-			Mod1Mask,
+			ModifierMask,
 			w,
 			false,
 			ButtonPressMask | ButtonMotionMask,
@@ -310,9 +359,9 @@ void WindowManager::frame(Window w, bool createdBefore) {
 }
 
 void WindowManager::unframe(Window w) {
-	const Window frame = _clients[w];
+	const WindowMeta meta = _clients[w];
 
-	XUnmapWindow(_display, frame);
+	XUnmapWindow(_display, meta.border);
 
 	XReparentWindow(
 			_display,
@@ -320,8 +369,49 @@ void WindowManager::unframe(Window w) {
 			_root,
 			0, 0);
 	XRemoveFromSaveSet(_display, w);
-	XDestroyWindow(_display, frame);
+	XDestroyWindow(_display, meta.border);
 	_clients.erase(w);
 
-	LOG(INFO) << "Unframed Window" << w << " [" << frame << ']';
+	LOG(INFO) << "Unframed Window" << w << " [" << meta.border << ']';
+}
+
+void WindowManager::switchWorkspace(int index) {
+	XWindowAttributes xattr;
+
+	for(auto pair : _clients) {
+		if(pair.second.workspace == _currentWorkspace) {
+			hide(pair.second);
+		}
+	}
+
+	_currentWorkspace = index;
+
+	for(auto pair : _clients) {
+		if(pair.second.workspace == _currentWorkspace) {
+			show(pair.second);
+		}
+	}
+}
+
+void WindowManager::hide(WindowMeta meta) {
+	XWindowAttributes xattr;
+	XGetWindowAttributes(_display, meta.border, &xattr);
+
+	//Big brain window hide
+	XMoveWindow(
+		_display,
+		meta.border,
+		xattr.x + _screen->width,
+		xattr.y);
+};
+
+void WindowManager::show(WindowMeta meta) {
+	XWindowAttributes xattr;
+	XGetWindowAttributes(_display, meta.border, &xattr);
+
+	XMoveWindow(
+			_display,
+			meta.border,
+			xattr.x - _screen->width,
+			xattr.y);
 }
