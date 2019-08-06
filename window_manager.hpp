@@ -29,6 +29,7 @@ struct Vector2 {
 struct WindowMeta {
 	Window border;	//Handle to border
 	int workspace;
+	Vector2 restore;
 };
 
 class WindowManager {
@@ -53,8 +54,8 @@ class WindowManager {
 		void frame(Window w, bool createdBefore);
 		void unframe(Window w);
 		void switchWorkspace(int index);
-		void hide(WindowMeta meta);
-		void show(WindowMeta meta);
+		void hide(WindowMeta &meta);
+		void show(WindowMeta &meta);
 
 		//Map from each window to their respective border
 		std::unordered_map<Window, WindowMeta> _clients;

@@ -378,7 +378,7 @@ void WindowManager::unframe(Window w) {
 void WindowManager::switchWorkspace(int index) {
 	XWindowAttributes xattr;
 
-	for(auto pair : _clients) {
+	for(auto &pair : _clients) {
 		if(pair.second.workspace == _currentWorkspace) {
 			hide(pair.second);
 		}
@@ -386,32 +386,33 @@ void WindowManager::switchWorkspace(int index) {
 
 	_currentWorkspace = index;
 
-	for(auto pair : _clients) {
+	for(auto &pair : _clients) {
 		if(pair.second.workspace == _currentWorkspace) {
 			show(pair.second);
 		}
 	}
 }
 
-void WindowManager::hide(WindowMeta meta) {
+void WindowManager::hide(WindowMeta &meta) {
 	XWindowAttributes xattr;
 	XGetWindowAttributes(_display, meta.border, &xattr);
+
+	meta.restore = {xattr.x, xattr.y};
 
 	//Big brain window hide
 	XMoveWindow(
 		_display,
 		meta.border,
-		xattr.x + _screen->width,
+		_screen->width,
 		xattr.y);
 };
 
-void WindowManager::show(WindowMeta meta) {
+void WindowManager::show(WindowMeta &meta) {
 	XWindowAttributes xattr;
-	XGetWindowAttributes(_display, meta.border, &xattr);
 
 	XMoveWindow(
 			_display,
 			meta.border,
-			xattr.x - _screen->width,
-			xattr.y);
+			meta.restore.x,
+			meta.restore.y);
 }
