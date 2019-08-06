@@ -63,7 +63,7 @@ void WindowManager::run() {
 	XFree(topLevel);
 	XUngrabServer(_display);
 
-	Screen *screen = XDefaultScreenOfDisplay(_display);
+	_screen = XDefaultScreenOfDisplay(_display);
 
 	KeyCode left = XKeysymToKeycode(_display, XK_H),
 			right = XKeysymToKeycode(_display, XK_L),
