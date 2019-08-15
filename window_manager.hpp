@@ -6,25 +6,12 @@ extern "C" {
 	#include <X11/Xlib.h>
 }
 
+#include "vector2.hpp"
+
 #include <unordered_map>
 #include <functional>
 #include <memory>
 
-//TODO: Move into separate implementation
-struct Vector2 {
-	constexpr Vector2(int _x = 0, int _y = 0) 
-		: x(_x), y(_y) {}
-
-	constexpr Vector2 operator+(const Vector2 lhs) const {
-		return {x + lhs.x, y + lhs.y};
-	}
-
-	constexpr Vector2 operator-(const Vector2 lhs) const {
-		return {x - lhs.x, y - lhs.y};
-	}
-
-	int x, y;
-};
 
 struct WindowMeta {
 	Window border;	//Handle to border
