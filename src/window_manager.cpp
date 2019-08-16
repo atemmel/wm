@@ -65,8 +65,11 @@ void WindowManager::run() {
 	XUngrabServer(_display);
 
 	_screen = XDefaultScreenOfDisplay(_display);
-	_atomDeleteWindow = XInternAtom(_display, "WM_DELETE_WINDOW", False);
-	_atomWMProtocols = XInternAtom(_display, "WM_PROTOCOLS", False);
+
+	//Sources for icccm atoms:
+	//https://www.x.org/docs/ICCCM/icccm.pdf
+	_atomDeleteWindow = XInternAtom(_display, "WM_DELETE_WINDOW", False); //Page 43
+	_atomWMProtocols = XInternAtom(_display, "WM_PROTOCOLS", False); //Page 26
 
 	initKeys();
 
