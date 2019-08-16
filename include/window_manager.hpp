@@ -90,6 +90,10 @@ class WindowManager {
 		std::vector<Client> _clients;
 		std::unordered_map<KeyCode, std::function<void(unsigned int)> > _binds;
 
+		//Atoms
+		Atom _atomDeleteWindow;
+		Atom _atomWMProtocols;
+
 		//Near-primitives
 		Vector2 startCursorPos, startWindowPos, startWindowSize;
 		Display *_display;

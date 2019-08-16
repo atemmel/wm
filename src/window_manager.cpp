@@ -65,6 +65,8 @@ void WindowManager::run() {
 	XUngrabServer(_display);
 
 	_screen = XDefaultScreenOfDisplay(_display);
+	_atomDeleteWindow = XInternAtom(_display, "WM_DELETE_WINDOW", False);
+	_atomWMProtocols = XInternAtom(_display, "WM_PROTOCOLS", False);
 
 	initKeys();
 
@@ -390,16 +392,14 @@ void WindowManager::show(const Client &client) {
 }
 
 void WindowManager::kill(const Client &client) const {
-	/*	To be implemented
 	XEvent ev;
     ev.type = ClientMessage;
     ev.xclient.window = client.window;
-    ev.xclient.message_type = _NET_CLOSE_WINDOW;
+    ev.xclient.message_type = _atomWMProtocols;
     ev.xclient.format = 32;
-    ev.xclient.data.l[0] = WM_DELETE_WINDOW;
+    ev.xclient.data.l[0] = _atomDeleteWindow;
     ev.xclient.data.l[1] = CurrentTime;
-    XSendEvent(display, client.window, False, NoEventMask, &ev);
-	*/
+    XSendEvent(_display, client.window, False, NoEventMask, &ev);
 }
 
 void WindowManager::moveClient(Client &client, int workspace) {
@@ -415,12 +415,12 @@ void WindowManager::zoomClient(Client &client) {
 
 void WindowManager::initKeys() {
 
-	KeyCode left  = XKeysymToKeycode(_display, XK_H),
-			right = XKeysymToKeycode(_display, XK_L),
-			up    = XKeysymToKeycode(_display, XK_K),
-			down  = XKeysymToKeycode(_display, XK_J),
-			kill  = XKeysymToKeycode(_display, XK_Q),
-			enter = XKeysymToKeycode(_display, XK_Return);
+	KeyCode left	= XKeysymToKeycode(_display, XK_H),
+			right	= XKeysymToKeycode(_display, XK_L),
+			up   	= XKeysymToKeycode(_display, XK_K),
+			down 	= XKeysymToKeycode(_display, XK_J),
+			killKey	= XKeysymToKeycode(_display, XK_Q),
+			enter	= XKeysymToKeycode(_display, XK_Return);
 
 	//Left
 	XGrabKey(_display,
@@ -460,7 +460,7 @@ void WindowManager::initKeys() {
 
 	//Kill
 	XGrabKey(_display,
-			kill,
+			killKey,
 			AnyModifier,
 			_root,
 			False,
@@ -477,13 +477,13 @@ void WindowManager::initKeys() {
 			GrabModeAsync);
 
 	auto changeWsCall = [&](WindowManager::Direction dir, unsigned int state) {
+		const int newWorkspace = workspaceMap(dir);
 		if(state & ShiftMask) {
-			const int newWorkspace = workspaceMap(dir);
+			if(!_focused) return; 
 			std::cout << "Moving window to workspace " << newWorkspace << '\n';
-			if(_focused) moveClient(*_focused, newWorkspace);
+			moveClient(*_focused, newWorkspace);
 		}
 		else {
-			const int newWorkspace = workspaceMap(dir);
 			std::cout << "Switching to workspace " << newWorkspace << '\n';
 			switchWorkspace(newWorkspace);
 		}
@@ -517,9 +517,12 @@ void WindowManager::initKeys() {
 
 	_binds.insert(
 	{
-		kill,
+		killKey,
 		[&](unsigned int state) {
-			
+			if(!_focused) return;
+
+			kill(*_focused);
+			focusNext();
 		}
 	});
 
