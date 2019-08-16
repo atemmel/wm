@@ -1,6 +1,6 @@
 #!/bin/sh
 XEPHYR=$(whereis -b Xephyr | cut -f2 -d' ')
-xinit ./xinitrc -- \
+xinit ././xinitrc -- \
     "$XEPHYR" \
     :100 \
 	-ac \

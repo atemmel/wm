@@ -20,7 +20,7 @@ std::unique_ptr<WindowManager> WindowManager::create() {
 }
 
 WindowManager::WindowManager(Display *display) 
-	: _display(display), _root(DefaultRootWindow(_display) ) {
+	: _display(display), _root(DefaultRootWindow(_display) ), _focused(nullptr) {
 }
 
 WindowManager::~WindowManager() {
@@ -105,7 +105,7 @@ void WindowManager::run() {
 				onMotionNotify(e.xmotion);
 				break;
 			case KeyPress:
-				if(e.xkey.state & ModifierMask) {
+				if(e.xkey.state & modifierMask) {
 					if(auto it = _binds.find(e.xkey.keycode); it != _binds.end() ) {
 						it->second(e.xkey.state);
 					}
@@ -244,6 +244,7 @@ void WindowManager::onMotionNotify(const XMotionEvent &e) {
 }
 
 void WindowManager::focus(Client &client) {
+	_focused = &client;
 	XRaiseWindow(_display, client.border);
 	XSetInputFocus(_display, client.window, RevertToParent, CurrentTime);
 }
@@ -256,6 +257,7 @@ void WindowManager::focusNext() {
 		}
 	}
 
+	_focused = nullptr;
 	XSetInputFocus(_display, _root, RevertToPointerRoot, CurrentTime);
 }
 
@@ -305,7 +307,7 @@ void WindowManager::frame(Window w, bool createdBefore) {
 	XGrabButton(
 			_display,
 			Button1,
-			ModifierMask,
+			modifierMask,
 			w,
 			false,
 			ButtonPressMask | ButtonMotionMask,
@@ -318,7 +320,7 @@ void WindowManager::frame(Window w, bool createdBefore) {
 	XGrabButton(
 			_display,
 			Button3,
-			ModifierMask,
+			modifierMask,
 			w,
 			false,
 			ButtonPressMask | ButtonMotionMask,
@@ -341,7 +343,7 @@ void WindowManager::unframe(const Client &client) {
 	LOG(INFO) << "Unframed Window" << client.window << " [" << client.border << ']';
 }
 
-void WindowManager::switchWorkspace(int index) {
+void WindowManager::switchWorkspace(int workspace) {
 	XWindowAttributes xattr;
 
 	for(auto &client : _clients) {
@@ -350,7 +352,7 @@ void WindowManager::switchWorkspace(int index) {
 		}
 	}
 
-	_currentWorkspace = index;
+	_currentWorkspace = workspace;
 
 	for(auto &client : _clients) {
 		if(client.workspace == _currentWorkspace) {
@@ -387,12 +389,37 @@ void WindowManager::show(const Client &client) {
 		client.restore.y);
 }
 
+void WindowManager::kill(const Client &client) const {
+	/*	To be implemented
+	XEvent ev;
+    ev.type = ClientMessage;
+    ev.xclient.window = client.window;
+    ev.xclient.message_type = _NET_CLOSE_WINDOW;
+    ev.xclient.format = 32;
+    ev.xclient.data.l[0] = WM_DELETE_WINDOW;
+    ev.xclient.data.l[1] = CurrentTime;
+    XSendEvent(display, client.window, False, NoEventMask, &ev);
+	*/
+}
+
+void WindowManager::moveClient(Client &client, int workspace) {
+	if(client.workspace == workspace) return;
+	client.workspace = workspace;
+	hide(client);
+	focusNext();
+}
+
+void WindowManager::zoomClient(Client &client) {
+	/* To be implemented */
+}
+
 void WindowManager::initKeys() {
 
 	KeyCode left  = XKeysymToKeycode(_display, XK_H),
 			right = XKeysymToKeycode(_display, XK_L),
 			up    = XKeysymToKeycode(_display, XK_K),
 			down  = XKeysymToKeycode(_display, XK_J),
+			kill  = XKeysymToKeycode(_display, XK_Q),
 			enter = XKeysymToKeycode(_display, XK_Return);
 
 	//Left
@@ -431,6 +458,15 @@ void WindowManager::initKeys() {
 			GrabModeAsync,
 			GrabModeAsync);
 
+	//Kill
+	XGrabKey(_display,
+			kill,
+			AnyModifier,
+			_root,
+			False,
+			GrabModeAsync,
+			GrabModeAsync);
+
 	//Spawn term
 	XGrabKey(_display,
 			enter,
@@ -444,6 +480,7 @@ void WindowManager::initKeys() {
 		if(state & ShiftMask) {
 			const int newWorkspace = workspaceMap(dir);
 			std::cout << "Moving window to workspace " << newWorkspace << '\n';
+			if(_focused) moveClient(*_focused, newWorkspace);
 		}
 		else {
 			const int newWorkspace = workspaceMap(dir);
@@ -480,6 +517,14 @@ void WindowManager::initKeys() {
 
 	_binds.insert(
 	{
+		kill,
+		[&](unsigned int state) {
+			
+		}
+	});
+
+	_binds.insert(
+	{
 		enter, 
 		[&](unsigned int state) {
 			system("urxvt &");
@@ -496,9 +541,9 @@ void WindowManager::printLayout() const {
 	};
 
 	std::cout 
-		<< "    " << p(North) << '\n'
-		<< p(West) << ' ' << p(Center) << ' ' << p(East) << '\n'
-		<< "    " << p(South) << '\n';
+		<< "    "	<<			p(North) << '\n'
+		<< p(West)	<< ' ' <<	p(Center) << ' ' 	<< 	p(East) << '\n'
+		<< "    "	<< 			p(South) << '\n';
 }
 
 constexpr int WindowManager::workspaceMap(Direction dir) const {
@@ -506,11 +551,11 @@ constexpr int WindowManager::workspaceMap(Direction dir) const {
 	//Table to map current workspace + direction to a new workspace
 	constexpr std::array<std::array<Ws, 4>, nWorkspaces> table {{
 		//Left			Right		Up			Down
-		{{ West,		East,		North,		South }},	//Center
-		{{ East,		Center,		North,		South }},	//West
-		{{ Center,		West,		North,		South }},	//East
-		{{ West,		East,		South,		Center }},	//North
-		{{ West,		East,		Center,		North }}	//South
+		{{ West,		East,		North,		South	}},	//Center
+		{{ East,		Center,		North,		South	}},	//West
+		{{ Center,		West,		North,		South	}},	//East
+		{{ West,		East,		South,		Center	}},	//North
+		{{ West,		East,		Center,		North	}}	//South
 	}};
 
 	return static_cast<int>(table[_currentWorkspace][static_cast<int>(dir)]);
@@ -519,17 +564,17 @@ constexpr int WindowManager::workspaceMap(Direction dir) const {
 bool WindowManager::exists(Window w) const {
 	return std::find_if(_clients.begin(), _clients.end(), [&](const Client &client) {
 				return client.window == w;
-			}) != _clients.end();
+		}) != _clients.end();
 }
 
 Client &WindowManager::find(Window w) {
 	return *std::find_if(_clients.begin(), _clients.end(), [&](const Client &client) {
 				return client.window == w;
-			});
+		});
 }
 
 void WindowManager::erase(Window w) {
 	_clients.erase(std::remove_if(_clients.begin(), _clients.end(), [&](const Client &client) {
 					return client.window == w;
-				}));
+		}));
 }
