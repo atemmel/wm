@@ -11,9 +11,11 @@ extern "C" {
 #include <unordered_map>
 #include <functional>
 #include <memory>
+#include <vector>
 
 
-struct WindowMeta {
+struct Client {
+	Window window;
 	Window border;	//Handle to border
 	int workspace;
 	Vector2 restore;
@@ -37,13 +39,13 @@ class WindowManager {
 		void onEnterNotify(const XEnterWindowEvent &e);
 		void onMotionNotify(const XMotionEvent &e);
 
-		void focus(Window w);
+		void focus(Client &client);
 		void focusNext();
 		void frame(Window w, bool createdBefore);
-		void unframe(Window w);
+		void unframe(const Client &client);
 		void switchWorkspace(int index);
-		void hide(WindowMeta &meta);
-		void show(WindowMeta &meta);
+		void hide(Client &meta);
+		void show(const Client &meta);
 		void initKeys();
 
 		void printLayout() const;
@@ -68,8 +70,12 @@ class WindowManager {
 
 		constexpr int workspaceMap(Direction dir) const;
 
-		//Map from each window to their respective border
-		std::unordered_map<Window, WindowMeta> _clients;
+		std::vector<Client> _clients;
+		//Helper functions
+		bool exists(Window w) const;
+		Client &find(Window w);
+		void erase(Window w);
+
 		std::unordered_map<KeyCode, std::function<void(unsigned int)> > _binds;
 
 		Vector2 startCursorPos, startWindowPos, startWindowSize;

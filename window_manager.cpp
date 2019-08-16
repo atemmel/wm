@@ -146,8 +146,7 @@ void WindowManager::onConfigureRequest(const XConfigureRequestEvent &e) {
 	changes.sibling = e.above;
 	changes.stack_mode = e.detail;
 
-	if(_clients.count(e.window)) {
-		//const Window frame = _clients[e.window];
+	if(exists(e.window)) {
 		XConfigureWindow(_display, e.window, e.value_mask, &changes);
 		LOG(INFO) << "Resize " << e.window << " to w:" 
 			<< std::to_string(e.width) << " h:" << std::to_string(e.height);
@@ -157,7 +156,7 @@ void WindowManager::onConfigureRequest(const XConfigureRequestEvent &e) {
 void WindowManager::onMapRequest(const XMapRequestEvent &e) {
 	frame(e.window, false);
 	XMapWindow(_display, e.window);
-	focus(e.window);
+	focus(find(e.window));
 }
 
 void WindowManager::onUnmapNotify(const XUnmapEvent &e) {
@@ -166,16 +165,16 @@ void WindowManager::onUnmapNotify(const XUnmapEvent &e) {
 		return;
 	}
 
-	if(!_clients.count(e.window) ) {
+	if(!exists(e.window) ) {
 		LOG(INFO) << "Ignore UnmapNotify for non-client window " << e.window;
 		return;
 	}
 
-	unframe(e.window);
+	unframe(find(e.window));
 }
 
 void WindowManager::onButtonPress(const XButtonEvent &e) {
-	const WindowMeta meta = _clients[e.window];
+	const Client &client = find(e.window);
 	LOG(INFO) << "Click in window " << std::to_string(e.window);
 
 	startCursorPos = {e.x_root, e.y_root};
@@ -186,7 +185,7 @@ void WindowManager::onButtonPress(const XButtonEvent &e) {
 
 	XGetGeometry(
 			_display,
-			meta.border,
+			client.border,
 			&returned,
 			&pos.x, &pos.y,
 			&w, &h,
@@ -205,21 +204,21 @@ void WindowManager::onFocusIn(const XFocusChangeEvent &e) {
 
 void WindowManager::onEnterNotify(const XEnterWindowEvent &e) {
 	LOG(INFO) << "Entered window " << std::to_string(e.window);
-	focus(e.window);
+	focus(find(e.window));
 }
 
 void WindowManager::onMotionNotify(const XMotionEvent &e) {
 	//LOG(INFO) << "Motion in window " << std::to_string(e.window);
 
 	const Vector2 cursorPos = {e.x_root, e.y_root};
-	const WindowMeta meta = _clients[e.window];
+	const Client &client = find(e.window);
 
 	if(e.state & Button1Mask) {	//Move window
 		const Vector2 delta = cursorPos - startCursorPos;
 		const Vector2 newPos = startWindowPos + delta;
 		XMoveWindow(
 				_display,
-				meta.border,
+				client.border,
 				newPos.x,
 				newPos.y);
 
@@ -239,21 +238,20 @@ void WindowManager::onMotionNotify(const XMotionEvent &e) {
 		//One for the border
 		XResizeWindow(
 				_display,
-				meta.border,
+				client.border,
 				newSize.x, newSize.y);
 	}
 }
 
-void WindowManager::focus(Window w) {
-	const WindowMeta meta = _clients[w];
-	XRaiseWindow(_display, meta.border);
-	XSetInputFocus(_display, w, RevertToParent, CurrentTime);
+void WindowManager::focus(Client &client) {
+	XRaiseWindow(_display, client.border);
+	XSetInputFocus(_display, client.window, RevertToParent, CurrentTime);
 }
 
 void WindowManager::focusNext() {
-	for(auto &pair : _clients) {
-		if(pair.second.workspace == _currentWorkspace) {
-			focus(pair.first);
+	for(auto it = _clients.rbegin(); it != _clients.rend(); it++) {
+		if(it->workspace == _currentWorkspace) {
+			focus(*it);
 			return;
 		}
 	}
@@ -301,7 +299,7 @@ void WindowManager::frame(Window w, bool createdBefore) {
 			0, 0);
 
 	XMapWindow(_display, frame);
-	_clients[w] = {frame, _currentWorkspace };
+	_clients.push_back({w, frame, _currentWorkspace });
 
 	//Grab Alt + LMB
 	XGrabButton(
@@ -332,65 +330,61 @@ void WindowManager::frame(Window w, bool createdBefore) {
 	LOG(INFO) << "Framed window " << w << " [" << frame << ']';
 }
 
-void WindowManager::unframe(Window w) {
-	const WindowMeta meta = _clients[w];
+void WindowManager::unframe(const Client &client) {
 
-	XUnmapWindow(_display, meta.border);
+	XUnmapWindow(_display, client.border);
 
-	XDestroyWindow(_display, meta.border);
-	_clients.erase(w);
+	XDestroyWindow(_display, client.border);
+	erase(client.window);
 	focusNext();
 
-	LOG(INFO) << "Unframed Window" << w << " [" << meta.border << ']';
+	LOG(INFO) << "Unframed Window" << client.window << " [" << client.border << ']';
 }
 
 void WindowManager::switchWorkspace(int index) {
 	XWindowAttributes xattr;
 
-	for(auto &pair : _clients) {
-		if(pair.second.workspace == _currentWorkspace) {
-			hide(pair.second);
+	for(auto &client : _clients) {
+		if(client.workspace == _currentWorkspace) {
+			hide(client);
 		}
 	}
 
 	_currentWorkspace = index;
 
-	for(auto &pair : _clients) {
-		if(pair.second.workspace == _currentWorkspace) {
-			show(pair.second);
-			//focus(pair.first);
+	for(auto &client : _clients) {
+		if(client.workspace == _currentWorkspace) {
+			show(client);
 		}
 	}
 
-	//focusNext();
+	focusNext();
 
 	printLayout();
 }
 
-void WindowManager::hide(WindowMeta &meta) {
+void WindowManager::hide(Client &client) {
 	XWindowAttributes xattr;
-	XGetWindowAttributes(_display, meta.border, &xattr);
+	XGetWindowAttributes(_display, client.border, &xattr);
 
-	meta.restore = {xattr.x, xattr.y};
+	client.restore = {xattr.x, xattr.y};
 
-	//XLowerWindow(_display, meta.border);
 	//Big brain window hide
 	XMoveWindow(
 		_display,
-		meta.border,
+		client.border,
 		xattr.x + _screen->width,
 		xattr.y + _screen->height);
 };
 
-void WindowManager::show(WindowMeta &meta) {
+void WindowManager::show(const Client &client) {
 	XWindowAttributes xattr;
 
-	//XRaiseWindow(_display, meta.border);
 	XMoveWindow(
 		_display,
-		meta.border,
-		meta.restore.x,
-		meta.restore.y);
+		client.border,
+		client.restore.x,
+		client.restore.y);
 }
 
 void WindowManager::initKeys() {
@@ -520,4 +514,22 @@ constexpr int WindowManager::workspaceMap(Direction dir) const {
 	}};
 
 	return static_cast<int>(table[_currentWorkspace][static_cast<int>(dir)]);
+}
+
+bool WindowManager::exists(Window w) const {
+	return std::find_if(_clients.begin(), _clients.end(), [&](const Client &client) {
+				return client.window == w;
+			}) != _clients.end();
+}
+
+Client &WindowManager::find(Window w) {
+	return *std::find_if(_clients.begin(), _clients.end(), [&](const Client &client) {
+				return client.window == w;
+			});
+}
+
+void WindowManager::erase(Window w) {
+	_clients.erase(std::remove_if(_clients.begin(), _clients.end(), [&](const Client &client) {
+					return client.window == w;
+				}));
 }
