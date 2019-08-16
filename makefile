@@ -7,5 +7,5 @@ CXXFLAGS := -std=c++17
 
 all: $(TARGET)
 
-$(TARGET): $(OBJ)
-	$(CC) -o $@ $^ $(LDLIBS)
+$(TARGET): $(SRC)
+	$(CC) -o $@ $^ $(LDLIBS) $(CXXFLAGS)

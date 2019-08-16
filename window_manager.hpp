@@ -38,15 +38,39 @@ class WindowManager {
 		void onMotionNotify(const XMotionEvent &e);
 
 		void focus(Window w);
+		void focusNext();
 		void frame(Window w, bool createdBefore);
 		void unframe(Window w);
 		void switchWorkspace(int index);
 		void hide(WindowMeta &meta);
 		void show(WindowMeta &meta);
+		void initKeys();
+
+		void printLayout() const;
+
+		enum Direction {
+			Left = 0,
+			Right,
+			Up,
+			Down
+		};
+
+		enum Ws {
+			Center = 0, 
+			West, 
+			East, 
+			North, 
+			South,
+			N
+		};
+
+		constexpr static int nWorkspaces = static_cast<int>(Ws::N);
+
+		constexpr int workspaceMap(Direction dir) const;
 
 		//Map from each window to their respective border
 		std::unordered_map<Window, WindowMeta> _clients;
-		std::unordered_map<KeyCode, std::function<void()> > _binds;
+		std::unordered_map<KeyCode, std::function<void(unsigned int)> > _binds;
 
 		Vector2 startCursorPos, startWindowPos, startWindowSize;
 

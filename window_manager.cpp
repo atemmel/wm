@@ -5,6 +5,7 @@
 
 #include <iostream>
 #include <string>
+#include <array>
 
 bool WindowManager::_wmDetected = false;
 
@@ -65,59 +66,7 @@ void WindowManager::run() {
 
 	_screen = XDefaultScreenOfDisplay(_display);
 
-	KeyCode left = XKeysymToKeycode(_display, XK_H),
-			right = XKeysymToKeycode(_display, XK_L),
-			enter = XKeysymToKeycode(_display, XK_Return);
-
-	XGrabKey(_display,
-			left,
-			AnyModifier,
-			_root,
-			False,
-			GrabModeAsync,
-			GrabModeAsync);
-
-	XGrabKey(_display,
-			right,
-			AnyModifier,
-			_root,
-			False,
-			GrabModeAsync,
-			GrabModeAsync);
-
-	XGrabKey(_display,
-			enter,
-			AnyModifier,
-			_root,
-			False,
-			GrabModeAsync,
-			GrabModeAsync);
-
-	_binds.insert(
-			{left, 
-			[&]() {
-				if(_currentWorkspace > 0) {
-					std::cout << "Switching to workspace "
-						<< _currentWorkspace - 1 << '\n';
-					switchWorkspace(_currentWorkspace - 1);
-				}
-			}});
-
-	_binds.insert(
-			{right, 
-			[&]() {
-				if(_currentWorkspace < 3) {
-					std::cout << "Switching to workspace "
-						<< _currentWorkspace + 1 << '\n';
-					switchWorkspace(_currentWorkspace + 1);
-				}
-			}});
-
-	_binds.insert(
-			{enter, 
-			[&]() {
-				system("urxvt &");
-			}});
+	initKeys();
 
 	//TODO: Log "All OK" message
 	/*	Loop	*/
@@ -158,7 +107,7 @@ void WindowManager::run() {
 			case KeyPress:
 				if(e.xkey.state & ModifierMask) {
 					if(auto it = _binds.find(e.xkey.keycode); it != _binds.end() ) {
-						it->second();
+						it->second(e.xkey.state);
 					}
 				}
 				break;
@@ -175,7 +124,9 @@ void WindowManager::run() {
 }
 
 int WindowManager::onXError(Display *display, XErrorEvent *e) { 
-	std::cout << "X error: " << e->request_code << " : " << std::hex << e->request_code << '\n';
+	std::cout << "X error: " << static_cast<int>(e->error_code) 
+		<< " : " << static_cast<int>(e->request_code)
+		<< " : " << static_cast<int>(e->resourceid) << '\n';
 	return 0; 
 }
 
@@ -246,8 +197,6 @@ void WindowManager::onButtonPress(const XButtonEvent &e) {
 	startWindowSize = {
 		static_cast<int>(w), 
 		static_cast<int>(h)};
-
-	//focus(e.window);
 }
 
 void WindowManager::onFocusIn(const XFocusChangeEvent &e) {
@@ -301,6 +250,17 @@ void WindowManager::focus(Window w) {
 	XSetInputFocus(_display, w, RevertToParent, CurrentTime);
 }
 
+void WindowManager::focusNext() {
+	for(auto &pair : _clients) {
+		if(pair.second.workspace == _currentWorkspace) {
+			focus(pair.first);
+			return;
+		}
+	}
+
+	XSetInputFocus(_display, _root, RevertToPointerRoot, CurrentTime);
+}
+
 void WindowManager::frame(Window w, bool createdBefore) {
 
 	XWindowAttributes attrs;
@@ -333,8 +293,6 @@ void WindowManager::frame(Window w, bool createdBefore) {
 			_display,
 			w,
 			EnterWindowMask);
-
-	XAddToSaveSet(_display, w);
 
 	XReparentWindow(
 			_display,
@@ -379,14 +337,9 @@ void WindowManager::unframe(Window w) {
 
 	XUnmapWindow(_display, meta.border);
 
-	XReparentWindow(
-			_display,
-			w,
-			_root,
-			0, 0);
-	XRemoveFromSaveSet(_display, w);
 	XDestroyWindow(_display, meta.border);
 	_clients.erase(w);
+	focusNext();
 
 	LOG(INFO) << "Unframed Window" << w << " [" << meta.border << ']';
 }
@@ -405,9 +358,13 @@ void WindowManager::switchWorkspace(int index) {
 	for(auto &pair : _clients) {
 		if(pair.second.workspace == _currentWorkspace) {
 			show(pair.second);
-			focus(pair.first);
+			//focus(pair.first);
 		}
 	}
+
+	//focusNext();
+
+	printLayout();
 }
 
 void WindowManager::hide(WindowMeta &meta) {
@@ -416,20 +373,151 @@ void WindowManager::hide(WindowMeta &meta) {
 
 	meta.restore = {xattr.x, xattr.y};
 
+	//XLowerWindow(_display, meta.border);
 	//Big brain window hide
 	XMoveWindow(
 		_display,
 		meta.border,
-		_screen->width,
-		xattr.y);
+		xattr.x + _screen->width,
+		xattr.y + _screen->height);
 };
 
 void WindowManager::show(WindowMeta &meta) {
 	XWindowAttributes xattr;
 
+	//XRaiseWindow(_display, meta.border);
 	XMoveWindow(
 		_display,
 		meta.border,
 		meta.restore.x,
 		meta.restore.y);
+}
+
+void WindowManager::initKeys() {
+
+	KeyCode left  = XKeysymToKeycode(_display, XK_H),
+			right = XKeysymToKeycode(_display, XK_L),
+			up    = XKeysymToKeycode(_display, XK_K),
+			down  = XKeysymToKeycode(_display, XK_J),
+			enter = XKeysymToKeycode(_display, XK_Return);
+
+	//Left
+	XGrabKey(_display,
+			left,
+			AnyModifier,
+			_root,
+			False,
+			GrabModeAsync,
+			GrabModeAsync);
+
+	//Right
+	XGrabKey(_display,
+			right,
+			AnyModifier,
+			_root,
+			False,
+			GrabModeAsync,
+			GrabModeAsync);
+
+	//Up
+	XGrabKey(_display,
+			up,
+			AnyModifier,
+			_root,
+			False,
+			GrabModeAsync,
+			GrabModeAsync);
+
+	//Down
+	XGrabKey(_display,
+			down,
+			AnyModifier,
+			_root,
+			False,
+			GrabModeAsync,
+			GrabModeAsync);
+
+	//Spawn term
+	XGrabKey(_display,
+			enter,
+			AnyModifier,
+			_root,
+			False,
+			GrabModeAsync,
+			GrabModeAsync);
+
+	auto changeWsCall = [&](WindowManager::Direction dir, unsigned int state) {
+		if(state & ShiftMask) {
+			const int newWorkspace = workspaceMap(dir);
+			std::cout << "Moving window to workspace " << newWorkspace << '\n';
+		}
+		else {
+			const int newWorkspace = workspaceMap(dir);
+			std::cout << "Switching to workspace " << newWorkspace << '\n';
+			switchWorkspace(newWorkspace);
+		}
+	};
+
+	using namespace std::placeholders;
+
+	_binds.insert(
+	{
+		left, 
+		std::bind(changeWsCall, WindowManager::Direction::Left, _1)
+	});
+
+	_binds.insert(
+	{
+		right, 
+		std::bind(changeWsCall, WindowManager::Direction::Right, _1)
+	});
+
+	_binds.insert(
+	{
+		up, 
+		std::bind(changeWsCall, WindowManager::Direction::Up, _1)
+	});
+
+	_binds.insert(
+	{
+		down, 
+		std::bind(changeWsCall, WindowManager::Direction::Down, _1)
+	});
+
+	_binds.insert(
+	{
+		enter, 
+		[&](unsigned int state) {
+			system("urxvt &");
+		}
+	});
+
+}
+
+void WindowManager::printLayout() const {
+	using Ws = WindowManager::Ws;
+	auto current = "[*]", other = "[ ]";
+	auto p = [&](Ws ws) {
+		return static_cast<int>(ws) == _currentWorkspace ? current : other;
+	};
+
+	std::cout 
+		<< "    " << p(North) << '\n'
+		<< p(West) << ' ' << p(Center) << ' ' << p(East) << '\n'
+		<< "    " << p(South) << '\n';
+}
+
+constexpr int WindowManager::workspaceMap(Direction dir) const {
+
+	//Table to map current workspace + direction to a new workspace
+	constexpr std::array<std::array<Ws, 4>, nWorkspaces> table {{
+		//Left			Right		Up			Down
+		{{ West,		East,		North,		South }},	//Center
+		{{ East,		Center,		North,		South }},	//West
+		{{ Center,		West,		North,		South }},	//East
+		{{ West,		East,		South,		Center }},	//North
+		{{ West,		East,		Center,		North }}	//South
+	}};
+
+	return static_cast<int>(table[_currentWorkspace][static_cast<int>(dir)]);
 }
