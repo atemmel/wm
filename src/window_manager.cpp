@@ -535,7 +535,7 @@ void WindowManager::initKeys() {
 
 void WindowManager::printLayout() const {
 	using Ws = WindowManager::Ws;
-	auto current = "[*]", other = "[ ]";
+	constexpr auto current = "[*]", other = "[ ]";
 	auto p = [&](Ws ws) {
 		return static_cast<int>(ws) == _currentWorkspace ? current : other;
 	};
