@@ -18,7 +18,8 @@ struct Client {
 	Window border;		//Handle to border
 	int workspace;		//Workspace index
 	Vector2 restore;	//"Old" coordinates
-	Vector2 size;		//Dimensions
+	Vector2 size;		//Dimension
+	Vector2 position;	//Positon
 	bool fullscreen = false;
 };
 

@@ -152,6 +152,9 @@ void WindowManager::onConfigureRequest(const XConfigureRequestEvent &e) {
 	changes.stack_mode = e.detail;
 
 	if(exists(e.window)) {
+		Client client = find(e.window);
+		client.size = Vector2{e.width, e.height};
+		client.position = Vector2{e.x, e.y};
 		XConfigureWindow(_display, e.window, e.value_mask, &changes);
 		LOG(INFO) << "Resize " << e.window << " to w:" 
 			<< std::to_string(e.width) << " h:" << std::to_string(e.height);
@@ -216,11 +219,14 @@ void WindowManager::onMotionNotify(const XMotionEvent &e) {
 	//LOG(INFO) << "Motion in window " << std::to_string(e.window);
 
 	const Vector2 cursorPos = {e.x_root, e.y_root};
-	const Client &client = find(e.window);
+	Client &client = find(e.window);
+
+	if(client.fullscreen) return;
 
 	if(e.state & Button1Mask) {	//Move window
 		const Vector2 delta = cursorPos - startCursorPos;
 		const Vector2 newPos = startWindowPos + delta;
+		client.position = Vector2(newPos.x, newPos.y);
 		XMoveWindow(
 				_display,
 				client.border,
@@ -306,7 +312,14 @@ void WindowManager::frame(Window w, bool createdBefore) {
 			0, 0);
 
 	XMapWindow(_display, frame);
-	_clients.push_back({w, frame, _currentWorkspace });
+	_clients.push_back({
+		w, 
+		frame, 
+		_currentWorkspace,
+		{attrs.x, attrs.y},
+		{attrs.width, attrs.height},
+		false
+	});
 
 	//Grab Alt + LMB
 	XGrabButton(
@@ -423,7 +436,8 @@ void WindowManager::initKeys() {
 			up   	= XKeysymToKeycode(_display, XK_K),
 			down 	= XKeysymToKeycode(_display, XK_J),
 			killKey	= XKeysymToKeycode(_display, XK_Q),
-			enter	= XKeysymToKeycode(_display, XK_Return);
+			enter	= XKeysymToKeycode(_display, XK_Return),
+			zoom	= XKeysymToKeycode(_display, XK_F);
 
 	//Left
 	XGrabKey(_display,
@@ -473,6 +487,15 @@ void WindowManager::initKeys() {
 	//Spawn term
 	XGrabKey(_display,
 			enter,
+			AnyModifier,
+			_root,
+			False,
+			GrabModeAsync,
+			GrabModeAsync);
+
+	//Zoom
+	XGrabKey(_display,
+			zoom,
 			AnyModifier,
 			_root,
 			False,
@@ -534,6 +557,42 @@ void WindowManager::initKeys() {
 		enter, 
 		[&](unsigned int state) {
 			system("urxvt &");
+		}
+	});
+
+	_binds.insert(
+	{
+		zoom, 
+		[&](unsigned int state) {
+			if(state & ShiftMask) {
+				if(!_focused) return;
+
+				constexpr int border2W = static_cast<int>(borderWidth << 1);
+				Vector2 size = _focused->fullscreen ? _focused->size 
+					: Vector2{_screen->width - border2W, _screen->height - border2W};
+				Vector2 position = _focused->fullscreen ? _focused->position 
+					: Vector2();
+
+				XResizeWindow(
+						_display, 
+						_focused->border, 
+						size.x, 
+						size.y);
+
+				XResizeWindow(
+						_display, 
+						_focused->window, 
+						size.x, 
+						size.y);
+
+				XMoveWindow(
+						_display,
+						_focused->border,
+						position.x,
+						position.y);
+
+				_focused->fullscreen ^= 1;
+			}
 		}
 	});
 
