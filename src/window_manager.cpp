@@ -1,3 +1,4 @@
+#include "event.hpp"
 #include "window_manager.hpp"
 
 #include <glog/logging.h>	/* TODO: Remove dependency */
@@ -117,7 +118,18 @@ void WindowManager::run() {
 				}
 				break;
 			case ClientMessage:
-				std::cout << "Client message: " << &e.xclient << '\n';
+				if(e.xclient.message_type == XInternAtom(_display, Event::RequestAtom, False) ) {
+					std::cout << "Client message: " << &e.xclient << '\n';
+					
+					switch(e.xclient.data.l[0]) {
+						case Event::Move:
+							std::cout << "Move\n";
+							break;
+						case Event::Kill:
+							std::cout << "Kill\n";
+							break;
+					}
+				}
 				break;
 			case CreateNotify:
 			case DestroyNotify:
@@ -478,6 +490,7 @@ void WindowManager::initKeys() {
 			GrabModeAsync,
 			GrabModeAsync);
 
+	/*
 	//Kill
 	XGrabKey(_display,
 			killKey,
@@ -504,6 +517,7 @@ void WindowManager::initKeys() {
 			False,
 			GrabModeAsync,
 			GrabModeAsync);
+			*/
 
 	auto changeWsCall = [&](WindowManager::Direction dir, unsigned int state) {
 		const int newWorkspace = workspaceMap(dir);

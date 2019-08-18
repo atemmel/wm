@@ -1,10 +1,10 @@
-TARGETS := wm wmc
+TARGETS := wm wmevent
 LDLIBS := -lX11 -lglog
 CC := g++
 SRCDIR := src
 SRC := $(wildcard $(SRCDIR)/*.cpp)
 SRC := $(filter-out $(SRCDIR)/wm.cpp, $(SRC))
-SRC := $(filter-out $(SRCDIR)/wmc.cpp, $(SRC))
+SRC := $(filter-out $(SRCDIR)/wmevent.cpp, $(SRC))
 OBJ := $(SRC:%.cpp=%.o)
 INCLUDES := -Iinclude/
 CXXFLAGS := -std=c++17
