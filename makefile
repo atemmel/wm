@@ -6,7 +6,7 @@ SRC := $(wildcard $(SRCDIR)/*.cpp)
 SRC := $(filter-out $(SRCDIR)/wm.cpp, $(SRC))
 SRC := $(filter-out $(SRCDIR)/wmc.cpp, $(SRC))
 OBJ := $(SRC:%.cpp=%.o)
-INCLUDES = -Iinclude/
+INCLUDES := -Iinclude/
 CXXFLAGS := -std=c++17
 
 all: $(TARGETS)

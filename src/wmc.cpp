@@ -1,3 +1,5 @@
+#include "event.hpp"
+
 #include <X11/Xlib.h>
 
 #include <iostream>
@@ -14,7 +16,7 @@ void send() {
 	root = DefaultRootWindow(display);
 
 	e.xclient.type = ClientMessage;
-
+	e.xclient.message_type = XInternAtom(display, WM_REQUEST, False);
 	e.xclient.window = root;
 	e.xclient.format = 32;
 
