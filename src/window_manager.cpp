@@ -116,6 +116,9 @@ void WindowManager::run() {
 					}
 				}
 				break;
+			case ClientMessage:
+				std::cout << "Client message: " << &e.xclient << '\n';
+				break;
 			case CreateNotify:
 			case DestroyNotify:
 			case ReparentNotify:

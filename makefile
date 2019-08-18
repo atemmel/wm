@@ -1,12 +1,15 @@
-TARGET := wm
+TARGETS := wm wmc
 LDLIBS := -lX11 -lglog
 CC := g++
-SRC := $(wildcard src/*.cpp)
+SRCDIR := src
+SRC := $(wildcard $(SRCDIR)/*.cpp)
+SRC := $(filter-out $(SRCDIR)/wm.cpp, $(SRC))
+SRC := $(filter-out $(SRCDIR)/wmc.cpp, $(SRC))
 OBJ := $(SRC:%.cpp=%.o)
 INCLUDES = -Iinclude/
 CXXFLAGS := -std=c++17
 
-all: $(TARGET)
+all: $(TARGETS)
 
-$(TARGET): $(SRC)
-	$(CC) -o $@ $^ $(LDLIBS) $(CXXFLAGS) $(INCLUDES)
+$(TARGETS): $(SRC)
+	$(CC) -o $@ $(SRCDIR)/$@.cpp $^ $(LDLIBS) $(CXXFLAGS) $(INCLUDES)
