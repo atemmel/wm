@@ -10,12 +10,10 @@ void send() {
 	Window root;
 	XEvent e;
 
-	puts("here");
 	display = XOpenDisplay(nullptr);
 
 	if(!display) return;
 
-	puts("here");
 	root = DefaultRootWindow(display);
 
 	e.xclient.type = ClientMessage;
@@ -24,16 +22,13 @@ void send() {
 	e.xclient.format = 32;
 	
 	e.xclient.data.l[0] = static_cast<long>(Event::Kill);
+	std::cout << e.xclient.data.l[0] << '\n';
 
-	puts("here");
 	XSendEvent(display, root, false, SubstructureRedirectMask, &e);
-	puts("here");
 	XSync(display, false);
-	puts("here");
 	XCloseDisplay(display);
 }
 
 int main(int argc, char **argv) {
-	puts("here");
 	send();
 }

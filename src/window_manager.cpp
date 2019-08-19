@@ -74,12 +74,27 @@ void WindowManager::run() {
 
 	initKeys();
 
+	std::array<std::function<void(long)>, static_cast<size_t>(Event::NEvents)>
+		events = {
+			[&](long arg) {	//Move to workspace
+				std::cout << "Move to workspace\n";
+			},
+			[&](long arg) {	//Change workspace
+				std::cout << "Change workspace\n";
+			},
+			[&](long arg) {	//Zoom
+				std::cout << "Zoom\n";
+			},
+			[&](long arg) {	//Kill
+				std::cout << "Kill\n";
+			}
+		};
+
 	//TODO: Log "All OK" message
 	/*	Loop	*/
 	while(true) {
 		XEvent e;
 		XNextEvent(_display, &e);
-		//LOG(INFO) << "Recieved event: " << std::to_string(e.type);
 
 		switch(e.type) {
 			case ConfigureRequest:
@@ -119,16 +134,8 @@ void WindowManager::run() {
 				break;
 			case ClientMessage:
 				if(e.xclient.message_type == XInternAtom(_display, Event::RequestAtom, False) ) {
-					std::cout << "Client message: " << &e.xclient << '\n';
-					
-					switch(e.xclient.data.l[0]) {
-						case Event::Move:
-							std::cout << "Move\n";
-							break;
-						case Event::Kill:
-							std::cout << "Kill\n";
-							break;
-					}
+					std::cout << "Client message: " << e.xclient.data.l[0] << '\n';
+					events[e.xclient.data.l[0]](e.xclient.data.l[1]);
 				}
 				break;
 			case CreateNotify:
@@ -441,7 +448,31 @@ void WindowManager::moveClient(Client &client, int workspace) {
 }
 
 void WindowManager::zoomClient(Client &client) {
-	/* To be implemented */
+	constexpr int border2W = static_cast<int>(borderWidth << 1);
+	Vector2 size = client.fullscreen ? client.size 
+		: Vector2{_screen->width - border2W, _screen->height - border2W};
+	Vector2 position = client.fullscreen ? client.position 
+		: Vector2();
+
+	XResizeWindow(
+			_display, 
+			client.border, 
+			size.x, 
+			size.y);
+
+	XResizeWindow(
+			_display, 
+			client.window, 
+			size.x, 
+			size.y);
+
+	XMoveWindow(
+			_display,
+			client.border,
+			position.x,
+			position.y);
+
+	client.fullscreen ^= 1;
 }
 
 void WindowManager::initKeys() {
@@ -494,15 +525,6 @@ void WindowManager::initKeys() {
 	//Kill
 	XGrabKey(_display,
 			killKey,
-			AnyModifier,
-			_root,
-			False,
-			GrabModeAsync,
-			GrabModeAsync);
-
-	//Spawn term
-	XGrabKey(_display,
-			enter,
 			AnyModifier,
 			_root,
 			False,
@@ -571,44 +593,11 @@ void WindowManager::initKeys() {
 
 	_binds.insert(
 	{
-		enter, 
-		[&](unsigned int state) {
-			system("urxvt &");
-		}
-	});
-
-	_binds.insert(
-	{
 		zoom, 
 		[&](unsigned int state) {
 			if(state & ShiftMask) {
 				if(!_focused) return;
-
-				constexpr int border2W = static_cast<int>(borderWidth << 1);
-				Vector2 size = _focused->fullscreen ? _focused->size 
-					: Vector2{_screen->width - border2W, _screen->height - border2W};
-				Vector2 position = _focused->fullscreen ? _focused->position 
-					: Vector2();
-
-				XResizeWindow(
-						_display, 
-						_focused->border, 
-						size.x, 
-						size.y);
-
-				XResizeWindow(
-						_display, 
-						_focused->window, 
-						size.x, 
-						size.y);
-
-				XMoveWindow(
-						_display,
-						_focused->border,
-						position.x,
-						position.y);
-
-				_focused->fullscreen ^= 1;
+				zoomClient(*_focused);
 			}
 		}
 	});
