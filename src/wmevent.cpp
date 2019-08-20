@@ -15,10 +15,16 @@ struct Option {
 
 static void die(std::string_view str);
 
+static void help();
+
 static void send(size_t type, char **argv);
 
 int main(int argc, char **argv) {
 	if(argc == 1) die("No argument given. Run -h to see arguments");
+
+	std::string_view arg = argv[1];
+
+	if(arg == "-h") help();
 
 	constexpr std::array<Option, static_cast<size_t>(Event::NEvents)> options = {{
 		{ "move_to", 1 },		//Move focused window to workspace
@@ -26,8 +32,6 @@ int main(int argc, char **argv) {
 		{ "zoom", 0 },			//Zoom focused window
 		{ "kill", 0 }			//Kill focused window
 	}};
-
-	std::string_view arg = argv[1];
 
 	auto it = std::find_if(options.begin(), options.end(), [&](const Option &opt) {
 		return arg == opt.name;
@@ -51,6 +55,16 @@ int main(int argc, char **argv) {
 static void die(std::string_view str) {
 	std::cout << str << '\n';
 	std::exit(EXIT_FAILURE);
+}
+
+static void help() {
+	std::cout <<
+		"Options:\n"
+		"move_to N     Moves focused window to workspace no N\n"
+		"change_to N   Changes active workspace to workspace no N\n"
+		"zoom          Zooms focused window\n"
+		"kill          Kills focused window\n";
+	std::exit(EXIT_SUCCESS);
 }
 
 void send(size_t type, char **argv) {
