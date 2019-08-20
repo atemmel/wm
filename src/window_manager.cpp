@@ -84,9 +84,13 @@ void WindowManager::run() {
 			},
 			[&](long arg) {	//Zoom
 				std::cout << "Zoom\n";
+				if(!_focused) return;
+				zoomClient(*_focused);
 			},
 			[&](long arg) {	//Kill
 				std::cout << "Kill\n";
+				if(!_focused) return;
+				kill(*_focused);
 			}
 		};
 
@@ -429,7 +433,7 @@ void WindowManager::show(const Client &client) {
 		client.restore.y);
 }
 
-void WindowManager::kill(const Client &client) const {
+void WindowManager::kill(const Client &client) {
 	XEvent ev;
     ev.type = ClientMessage;
     ev.xclient.window = client.window;
@@ -438,6 +442,7 @@ void WindowManager::kill(const Client &client) const {
     ev.xclient.data.l[0] = _atomDeleteWindow;
     ev.xclient.data.l[1] = CurrentTime;
     XSendEvent(_display, client.window, False, NoEventMask, &ev);
+	focusNext();
 }
 
 void WindowManager::moveClient(Client &client, int workspace) {
@@ -481,9 +486,7 @@ void WindowManager::initKeys() {
 			right	= XKeysymToKeycode(_display, XK_L),
 			up   	= XKeysymToKeycode(_display, XK_K),
 			down 	= XKeysymToKeycode(_display, XK_J),
-			killKey	= XKeysymToKeycode(_display, XK_Q),
-			enter	= XKeysymToKeycode(_display, XK_Return),
-			zoom	= XKeysymToKeycode(_display, XK_F);
+			killKey	= XKeysymToKeycode(_display, XK_Q);
 
 	//Left
 	XGrabKey(_display,
@@ -520,26 +523,6 @@ void WindowManager::initKeys() {
 			False,
 			GrabModeAsync,
 			GrabModeAsync);
-
-	/*
-	//Kill
-	XGrabKey(_display,
-			killKey,
-			AnyModifier,
-			_root,
-			False,
-			GrabModeAsync,
-			GrabModeAsync);
-
-	//Zoom
-	XGrabKey(_display,
-			zoom,
-			AnyModifier,
-			_root,
-			False,
-			GrabModeAsync,
-			GrabModeAsync);
-			*/
 
 	auto changeWsCall = [&](WindowManager::Direction dir, unsigned int state) {
 		const int newWorkspace = workspaceMap(dir);
@@ -579,29 +562,6 @@ void WindowManager::initKeys() {
 		down, 
 		std::bind(changeWsCall, WindowManager::Direction::Down, _1)
 	});
-
-	_binds.insert(
-	{
-		killKey,
-		[&](unsigned int state) {
-			if(!_focused) return;
-
-			kill(*_focused);
-			focusNext();
-		}
-	});
-
-	_binds.insert(
-	{
-		zoom, 
-		[&](unsigned int state) {
-			if(state & ShiftMask) {
-				if(!_focused) return;
-				zoomClient(*_focused);
-			}
-		}
-	});
-
 }
 
 void WindowManager::printLayout() const {

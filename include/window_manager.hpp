@@ -75,7 +75,7 @@ class WindowManager {
 		void switchWorkspace(int workspace);
 		void hide(Client &client);
 		void show(const Client &client);
-		void kill(const Client &client) const;
+		void kill(const Client &client);
 		void moveClient(Client &client, int workspace);
 		void zoomClient(Client &client);
 		void initKeys();

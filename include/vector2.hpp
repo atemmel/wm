@@ -1,4 +1,6 @@
 #pragma once
+#ifndef VECTOR2_HPP
+#define VECTOR2_HPP
 
 struct Vector2 {
 	Vector2(int _x = 0, int _y = 0);
@@ -9,3 +11,5 @@ struct Vector2 {
 
 	int x, y;
 };
+
+#endif
