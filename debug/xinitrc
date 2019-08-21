@@ -2,6 +2,8 @@
 xclock &
 sleep 2 && urxvt &
 
+sxhkd -c sxhkdrc &
+
 # 2. Start our window manager.
 export GLOG_logtostderr=1
 exec .././wm

@@ -492,6 +492,7 @@ void WindowManager::initKeys() {
 			down 	= XKeysymToKeycode(_display, XK_J),
 			killKey	= XKeysymToKeycode(_display, XK_Q);
 
+	/*
 	//Left
 	XGrabKey(_display,
 			left,
@@ -527,6 +528,7 @@ void WindowManager::initKeys() {
 			False,
 			GrabModeAsync,
 			GrabModeAsync);
+	*/
 
 	auto changeWsCall = [&](WindowManager::Direction dir, unsigned int state) {
 		const int newWorkspace = workspaceMap(dir);

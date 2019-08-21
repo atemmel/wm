@@ -1,0 +1,17 @@
+alt + Return
+	urxvt
+
+alt + d
+	rofi -show run
+
+alt + {h, j, k, l}
+	wmevent go {left, down, up, right}
+
+alt + shift + {h, j, k, l}
+	wmevent move {left, down, up, right}
+
+alt + q
+	wmevent kill
+
+alt + m
+	wmevent zoom
