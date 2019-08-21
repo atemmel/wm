@@ -74,20 +74,25 @@ void WindowManager::run() {
 
 	initKeys();
 
-	std::array<std::function<void(long)>, static_cast<size_t>(Event::NEvents)>
+	std::array<std::function<void(long*)>, static_cast<size_t>(Event::NEvents)>
 		events = {
-			[&](long arg) {	//Move to workspace
-				std::cout << "Move to workspace\n";
+			[&](long *arg) {	//Move Direction
+				std::cout << "Move Direction " << arg[0] << '\n';
+				if(!_focused) return;
+				auto dir = static_cast<WindowManager::Direction>(arg[0]);
+				moveClient(*_focused, workspaceMap(dir));
 			},
-			[&](long arg) {	//Change workspace
-				std::cout << "Change workspace\n";
+			[&](long *arg) {	//Go Direction
+				std::cout << "Go Direction " << arg[0] << '\n';
+				auto dir = static_cast<WindowManager::Direction>(arg[0]);
+				switchWorkspace(workspaceMap(dir));
 			},
-			[&](long arg) {	//Zoom
+			[&](long *arg) {	//Zoom
 				std::cout << "Zoom\n";
 				if(!_focused) return;
 				zoomClient(*_focused);
 			},
-			[&](long arg) {	//Kill
+			[&](long *arg) {	//Kill
 				std::cout << "Kill\n";
 				if(!_focused) return;
 				kill(*_focused);
@@ -139,7 +144,8 @@ void WindowManager::run() {
 			case ClientMessage:
 				if(e.xclient.message_type == XInternAtom(_display, Event::RequestAtom, False) ) {
 					std::cout << "Client message: " << e.xclient.data.l[0] << '\n';
-					events[e.xclient.data.l[0]](e.xclient.data.l[1]);
+					std::cout << &e.xclient.data.l[1] << '\n';
+					events[e.xclient.data.l[0]](&e.xclient.data.l[1]);
 				}
 				break;
 			case CreateNotify:
@@ -242,8 +248,6 @@ void WindowManager::onEnterNotify(const XEnterWindowEvent &e) {
 }
 
 void WindowManager::onMotionNotify(const XMotionEvent &e) {
-	//LOG(INFO) << "Motion in window " << std::to_string(e.window);
-
 	const Vector2 cursorPos = {e.x_root, e.y_root};
 	Client &client = find(e.window);
 

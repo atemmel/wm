@@ -7,8 +7,8 @@ namespace Event {
 constexpr static auto RequestAtom = "WM_REQUEST";
 
 enum {
-	MoveToWorkspace = 0,
-	ChangeWorkspace,
+	MoveDirection = 0,
+	GoDirection,
 	Zoom,
 	Kill,
 	NEvents

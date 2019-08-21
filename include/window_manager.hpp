@@ -28,7 +28,7 @@ class WindowManager {
 		static std::unique_ptr<WindowManager> create();
 		~WindowManager();
 		void run();
-	private:
+
 		//Enums
 		enum Direction {
 			Left = 0,
@@ -45,6 +45,7 @@ class WindowManager {
 			South,
 			N
 		};
+	private:
 
 		//Constants
 		constexpr static int nWorkspaces = static_cast<int>(Ws::N);

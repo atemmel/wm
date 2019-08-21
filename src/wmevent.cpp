@@ -1,3 +1,4 @@
+#include "window_manager.hpp"
 #include "event.hpp"
 
 #include <X11/Xlib.h>
@@ -17,7 +18,9 @@ static void die(std::string_view str);
 
 static void help();
 
-static void send(size_t type, char **argv);
+static long dirToLong(std::string_view str);
+
+static void send(size_t type, int argc, char **argv);
 
 int main(int argc, char **argv) {
 	if(argc == 1) die("No argument given. Run -h to see arguments");
@@ -27,8 +30,8 @@ int main(int argc, char **argv) {
 	if(arg == "-h") help();
 
 	constexpr std::array<Option, static_cast<size_t>(Event::NEvents)> options = {{
-		{ "move_to", 1 },		//Move focused window to workspace
-		{ "change_to", 1 },		//Change active workspace
+		{ "move", 1 },		//Move focused window to workspace
+		{ "go", 1 },		//Change active workspace
 		{ "zoom", 0 },			//Zoom focused window
 		{ "kill", 0 }			//Kill focused window
 	}};
@@ -47,7 +50,7 @@ int main(int argc, char **argv) {
 
 	size_t type = std::distance(options.begin(), it);
 		
-	send(type, argv);
+	send(type, argc, argv);
 
 	return EXIT_SUCCESS;
 }
@@ -60,14 +63,29 @@ static void die(std::string_view str) {
 static void help() {
 	std::cout <<
 		"Options:\n"
-		"move_to N     Moves focused window to workspace no N\n"
-		"change_to N   Changes active workspace to workspace no N\n"
+		"move N        Moves focused window in direction N\n"
+		"go N          Changes active workspace to workspace in direction N\n"
 		"zoom          Zooms focused window\n"
 		"kill          Kills focused window\n";
 	std::exit(EXIT_SUCCESS);
 }
 
-void send(size_t type, char **argv) {
+static long dirToLong(std::string_view str) {
+	std::array<std::string_view, 4> dirs;
+
+	dirs[WindowManager::Direction::Left]  = "left";
+	dirs[WindowManager::Direction::Right] = "right";
+	dirs[WindowManager::Direction::Up]    = "up";
+	dirs[WindowManager::Direction::Down]  = "down";
+
+	for(long i = 0; i < dirs.size(); i++) {
+		if(str == dirs[i]) return i;
+	}
+
+	return -1l;
+}
+
+static void send(size_t type, int argc, char **argv) {
 	Display *display;
 	Window root;
 	XEvent e;
@@ -82,11 +100,18 @@ void send(size_t type, char **argv) {
 	e.xclient.message_type = XInternAtom(display, Event::RequestAtom, False);
 	e.xclient.window = root;
 	e.xclient.format = 32;
+
 	
 	e.xclient.data.l[0] = static_cast<long>(type);
+	for(int i = 2; i < argc; i++) {
+		if(type == Event::MoveDirection || type == Event::GoDirection) {
+			e.xclient.data.l[i - 1] = dirToLong(argv[i]);
+			if(e.xclient.data.l[i - 1] == -1l) die("Invalid direction.");
+		}
+		else e.xclient.data.l[i - 1] = std::atol(argv[i]);
+	}
 
 	XSendEvent(display, root, false, SubstructureRedirectMask, &e);
 	XSync(display, false);
 	XCloseDisplay(display);
 }
-
