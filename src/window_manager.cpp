@@ -35,7 +35,7 @@ void WindowManager::run() {
 			_display,
 			_root,
 			SubstructureRedirectMask | SubstructureNotifyMask);
-	XSync(_display, false);	//Flush errors
+	XSync(_display, False);	//Flush errors
 	if(_wmDetected) {
 		LOG(ERROR) << "Detected another window manager on display " 
 			<< XDisplayString(_display);
@@ -340,7 +340,7 @@ void WindowManager::frame(Window w, bool createdBefore) {
 		_currentWorkspace,
 		{attrs.x, attrs.y},
 		{attrs.width, attrs.height},
-		false
+		False
 	});
 
 	//Grab Alt + LMB
