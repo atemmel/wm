@@ -79,7 +79,6 @@ class WindowManager {
 		void kill(const Client &client);
 		void moveClient(Client &client, int workspace);
 		void zoomClient(Client &client);
-		void initKeys();
 		constexpr int workspaceMap(Direction dir) const;
 
 		//Helper functions
@@ -90,7 +89,6 @@ class WindowManager {
 
 		//Containers
 		std::vector<Client> _clients;
-		std::unordered_map<KeyCode, std::function<void(unsigned int)> > _binds;
 
 		//Atoms
 		Atom _atomDeleteWindow;

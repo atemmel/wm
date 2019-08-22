@@ -72,8 +72,6 @@ void WindowManager::run() {
 	_atomDeleteWindow = XInternAtom(_display, "WM_DELETE_WINDOW", False); //Page 43
 	_atomWMProtocols = XInternAtom(_display, "WM_PROTOCOLS", False); //Page 26
 
-	initKeys();
-
 	std::array<std::function<void(long*)>, static_cast<size_t>(Event::NEvents)>
 		events = {
 			[&](long *arg) {	//Move Direction
@@ -134,13 +132,6 @@ void WindowManager::run() {
 
 				onMotionNotify(e.xmotion);
 				break;
-			case KeyPress:
-				if(e.xkey.state & modifierMask) {
-					if(auto it = _binds.find(e.xkey.keycode); it != _binds.end() ) {
-						it->second(e.xkey.state);
-					}
-				}
-				break;
 			case ClientMessage:
 				if(e.xclient.message_type == XInternAtom(_display, Event::RequestAtom, False) ) {
 					std::cout << "Client message: " << e.xclient.data.l[0] << '\n';
@@ -148,6 +139,7 @@ void WindowManager::run() {
 					events[e.xclient.data.l[0]](&e.xclient.data.l[1]);
 				}
 				break;
+			case KeyPress:
 			case CreateNotify:
 			case DestroyNotify:
 			case ReparentNotify:
@@ -482,92 +474,6 @@ void WindowManager::zoomClient(Client &client) {
 			position.y);
 
 	client.fullscreen ^= 1;
-}
-
-void WindowManager::initKeys() {
-
-	KeyCode left	= XKeysymToKeycode(_display, XK_H),
-			right	= XKeysymToKeycode(_display, XK_L),
-			up   	= XKeysymToKeycode(_display, XK_K),
-			down 	= XKeysymToKeycode(_display, XK_J),
-			killKey	= XKeysymToKeycode(_display, XK_Q);
-
-	/*
-	//Left
-	XGrabKey(_display,
-			left,
-			AnyModifier,
-			_root,
-			False,
-			GrabModeAsync,
-			GrabModeAsync);
-
-	//Right
-	XGrabKey(_display,
-			right,
-			AnyModifier,
-			_root,
-			False,
-			GrabModeAsync,
-			GrabModeAsync);
-
-	//Up
-	XGrabKey(_display,
-			up,
-			AnyModifier,
-			_root,
-			False,
-			GrabModeAsync,
-			GrabModeAsync);
-
-	//Down
-	XGrabKey(_display,
-			down,
-			AnyModifier,
-			_root,
-			False,
-			GrabModeAsync,
-			GrabModeAsync);
-	*/
-
-	auto changeWsCall = [&](WindowManager::Direction dir, unsigned int state) {
-		const int newWorkspace = workspaceMap(dir);
-		if(state & ShiftMask) {
-			if(!_focused) return; 
-			std::cout << "Moving window to workspace " << newWorkspace << '\n';
-			moveClient(*_focused, newWorkspace);
-		}
-		else {
-			std::cout << "Switching to workspace " << newWorkspace << '\n';
-			switchWorkspace(newWorkspace);
-		}
-	};
-
-	using namespace std::placeholders;
-
-	_binds.insert(
-	{
-		left, 
-		std::bind(changeWsCall, WindowManager::Direction::Left, _1)
-	});
-
-	_binds.insert(
-	{
-		right, 
-		std::bind(changeWsCall, WindowManager::Direction::Right, _1)
-	});
-
-	_binds.insert(
-	{
-		up, 
-		std::bind(changeWsCall, WindowManager::Direction::Up, _1)
-	});
-
-	_binds.insert(
-	{
-		down, 
-		std::bind(changeWsCall, WindowManager::Direction::Down, _1)
-	});
 }
 
 void WindowManager::printLayout() const {
