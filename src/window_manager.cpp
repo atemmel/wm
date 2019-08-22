@@ -146,7 +146,6 @@ void WindowManager::run() {
 			case ConfigureNotify:
 			case MapNotify:
 			default:
-				//LOG(WARNING) << "Ignored event";
 				break;
 		}
 	}
@@ -175,7 +174,7 @@ void WindowManager::onConfigureRequest(const XConfigureRequestEvent &e) {
 	changes.sibling = e.above;
 	changes.stack_mode = e.detail;
 
-	if(exists(e.window)) {
+	if(exists(e.window)) {	//TODO: Rewrite this so there is no double lookup
 		Client client = find(e.window);
 		client.size = Vector2{e.width, e.height};
 		client.position = Vector2{e.x, e.y};
@@ -197,7 +196,7 @@ void WindowManager::onUnmapNotify(const XUnmapEvent &e) {
 		return;
 	}
 
-	if(!exists(e.window) ) {
+	if(!exists(e.window) ) {	//TODO: Rewrite this so there is no double lookup
 		LOG(INFO) << "Ignore UnmapNotify for non-client window " << e.window;
 		return;
 	}
