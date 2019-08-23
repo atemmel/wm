@@ -1,5 +1,5 @@
 TARGETS := wm wmevent
-LDLIBS := -lX11 -lglog
+LDLIBS := -lX11
 CC := g++
 SRCDIR := src
 SRC := $(wildcard $(SRCDIR)/*.cpp)

@@ -1,13 +1,15 @@
+#define LOG_DEBUG 0
+#define LOG_ERROR 1
+#include "logger.hpp"
 #include "window_manager.hpp"
-#include <glog/logging.h>
 
 int main(int argc, char **argv) {
-	::google::InitGoogleLogging(argv[0]);
 
 	auto wm = WindowManager::create();
+	std::cout << LOG_ERROR << '\n';
 
 	if(!wm) {
-		LOG(ERROR) << "Failed to initialize window manager.";
+		LoggerError << "Failed to initialize window manager.";
 		return EXIT_FAILURE;
 	}
 
