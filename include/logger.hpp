@@ -4,14 +4,17 @@
 
 #include <iostream>
 
+//Define LOG_DEBUG and LOG_ERROR before including this header
+
 namespace Logger {
+	//Dummy class that the compiler ideally will remove
 	class DummyStream {
 		public:
 			DummyStream() = default;
 
 			template<typename T>
 			const DummyStream &operator << (const T &rhs) const {
-				return *this;
+				return *this;	//Just allow the operation
 			}
 
 		private:
