@@ -1,6 +1,6 @@
 #pragma once
-#ifndef LOGGER_HPP
-#define LOGGER_HPP
+#ifndef LOG_HPP
+#define LOG_HPP
 
 #include <iostream>
 
@@ -30,14 +30,14 @@ namespace Logger {
 #define ERROR_STREAM std::cerr
 
 #if LOG_DEBUG == 1
-	#define LoggerDebug DEBUG_STREAM << CURRENT_LOCATION
+	#define LogDebug DEBUG_STREAM << CURRENT_LOCATION
 #else
-	#define LoggerDebug Logger::dummyStream
+	#define LogDebug Logger::dummyStream
 #endif
 #if LOG_ERROR == 1
-	#define LoggerError ERROR_STREAM << CURRENT_LOCATION
+	#define LogError ERROR_STREAM << CURRENT_LOCATION
 #else
-	#define LoggerError Logger::dummyStream
+	#define LogError Logger::dummyStream
 #endif
 
 #endif

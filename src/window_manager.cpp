@@ -1,7 +1,7 @@
 #define LOG_DEBUG 0
 #define LOG_ERROR 1
 #include "event.hpp"
-#include "logger.hpp"
+#include "log.hpp"
 #include "window_manager.hpp"
 
 #include <X11/Xutil.h>
@@ -16,7 +16,7 @@ bool WindowManager::_wmDetected = false;
 std::unique_ptr<WindowManager> WindowManager::create() {
 	Display *display = XOpenDisplay(nullptr);
 	if(display == nullptr) {
-		LoggerError << "Failed to open X display " << XDisplayName(nullptr);
+		LogError << "Failed to open X display " << XDisplayName(nullptr);
 		return nullptr;
 	}
 
@@ -40,7 +40,7 @@ void WindowManager::run() {
 			SubstructureRedirectMask | SubstructureNotifyMask);
 	XSync(_display, False);	//Flush errors
 	if(_wmDetected) {
-		LoggerError << "Detected another window manager on display " 
+		LogError << "Detected another window manager on display " 
 			<< XDisplayString(_display);
 		return;
 	}
@@ -78,29 +78,29 @@ void WindowManager::run() {
 	std::array<std::function<void(long*)>, static_cast<size_t>(Event::NEvents)>
 		events = {
 			[&](long *arg) {	//Move Direction
-				LoggerDebug << "Move Direction " << arg[0] << '\n';
+				LogDebug << "Move Direction " << arg[0] << '\n';
 				if(!_focused) return;
 				auto dir = static_cast<WindowManager::Direction>(arg[0]);
 				moveClient(*_focused, workspaceMap(dir));
 			},
 			[&](long *arg) {	//Go Direction
-				LoggerDebug << "Go Direction " << arg[0] << '\n';
+				LogDebug << "Go Direction " << arg[0] << '\n';
 				auto dir = static_cast<WindowManager::Direction>(arg[0]);
 				switchWorkspace(workspaceMap(dir));
 			},
 			[&](long *arg) {	//Zoom
-				LoggerDebug << "Zoom\n";
+				LogDebug << "Zoom\n";
 				if(!_focused) return;
 				zoomClient(*_focused);
 			},
 			[&](long *arg) {	//Kill
-				LoggerDebug << "Kill\n";
+				LogDebug << "Kill\n";
 				if(!_focused) return;
 				kill(*_focused);
 			}
 		};
 
-	LoggerDebug << "All clear, wm starting\n";
+	LogDebug << "All clear, wm starting\n";
 	/*	Loop	*/
 	while(true) {
 		XEvent e;
@@ -137,8 +137,8 @@ void WindowManager::run() {
 				break;
 			case ClientMessage:
 				if(e.xclient.message_type == XInternAtom(_display, Event::RequestAtom, False) ) {
-					LoggerDebug << "Client message: " << e.xclient.data.l[0] << '\n';
-					LoggerDebug << &e.xclient.data.l[1] << '\n';
+					LogDebug << "Client message: " << e.xclient.data.l[0] << '\n';
+					LogDebug << &e.xclient.data.l[1] << '\n';
 					events[e.xclient.data.l[0]](&e.xclient.data.l[1]);
 				}
 				break;
@@ -155,7 +155,7 @@ void WindowManager::run() {
 }
 
 int WindowManager::onXError(Display *display, XErrorEvent *e) { 
-	LoggerDebug << "X error: " << static_cast<int>(e->error_code) 
+	LogDebug << "X error: " << static_cast<int>(e->error_code) 
 		<< " : " << static_cast<int>(e->request_code)
 		<< " : " << static_cast<int>(e->resourceid) << '\n';
 	return 0; 
@@ -182,7 +182,7 @@ void WindowManager::onConfigureRequest(const XConfigureRequestEvent &e) {
 		client.size = Vector2{e.width, e.height};
 		client.position = Vector2{e.x, e.y};
 		XConfigureWindow(_display, e.window, e.value_mask, &changes);
-		LoggerDebug << "Resize " << e.window << " to w:" 
+		LogDebug << "Resize " << e.window << " to w:" 
 			<< e.width << " h:" << e.height;
 	}
 }
@@ -195,12 +195,12 @@ void WindowManager::onMapRequest(const XMapRequestEvent &e) {
 
 void WindowManager::onUnmapNotify(const XUnmapEvent &e) {
 	if(e.event == _root) {
-		LoggerDebug << "Ignore UnmapNotify for reparented pre-existing window " << e.window;
+		LogDebug << "Ignore UnmapNotify for reparented pre-existing window " << e.window;
 		return;
 	}
 
 	if(!exists(e.window) ) {	//TODO: Rewrite this so there is no double lookup
-		LoggerDebug << "Ignore UnmapNotify for non-client window " << e.window;
+		LogDebug << "Ignore UnmapNotify for non-client window " << e.window;
 		return;
 	}
 
@@ -209,7 +209,7 @@ void WindowManager::onUnmapNotify(const XUnmapEvent &e) {
 
 void WindowManager::onButtonPress(const XButtonEvent &e) {
 	const Client &client = find(e.window);
-	LoggerDebug << "Click in window " << std::to_string(e.window);
+	LogDebug << "Click in window " << std::to_string(e.window);
 
 	startCursorPos = {e.x_root, e.y_root};
 
@@ -233,11 +233,11 @@ void WindowManager::onButtonPress(const XButtonEvent &e) {
 }
 
 void WindowManager::onFocusIn(const XFocusChangeEvent &e) {
-	LoggerDebug << "Focus changed" << e.window << '\n';
+	LogDebug << "Focus changed" << e.window << '\n';
 }
 
 void WindowManager::onEnterNotify(const XEnterWindowEvent &e) {
-	LoggerDebug << "Entered window " << std::to_string(e.window);
+	LogDebug << "Entered window " << std::to_string(e.window);
 	focus(find(e.window));
 }
 
@@ -371,7 +371,7 @@ void WindowManager::frame(Window w, bool createdBefore) {
 			None,
 			None);
 
-	LoggerDebug << "Framed window " << w << " [" << frame << ']';
+	LogDebug << "Framed window " << w << " [" << frame << ']';
 }
 
 void WindowManager::unframe(const Client &client) {
@@ -382,7 +382,7 @@ void WindowManager::unframe(const Client &client) {
 	erase(client.window);
 	focusNext();
 
-	LoggerDebug << "Unframed Window" << client.window << " [" << client.border << ']';
+	LogDebug << "Unframed Window" << client.window << " [" << client.border << ']';
 }
 
 void WindowManager::switchWorkspace(int workspace) {
@@ -485,7 +485,7 @@ void WindowManager::printLayout() const {
 		return static_cast<int>(ws) == _currentWorkspace ? current : other;
 	};
 
-	LoggerDebug 
+	LogDebug 
 		<< "    "	<<			p(North) << '\n'
 		<< p(West)	<< ' ' <<	p(Center) << ' ' 	<< 	p(East) << '\n'
 		<< "    "	<< 			p(South) << '\n';
