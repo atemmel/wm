@@ -94,6 +94,13 @@ class WindowManager {
 		Atom _atomDeleteWindow;
 		Atom _atomWMProtocols;
 
+		Atom _atomWMWindowType;
+		Atom _atomWMWindowDock;
+		Atom _atomWMWindowToolbar;
+		Atom _atomWMWindowUtility;
+		Atom _atomWMWindowDialog;
+		Atom _atomWMWindowMenu;
+
 		//Near-primitives
 		Vector2 startCursorPos, startWindowPos, startWindowSize;
 		Display *_display;

@@ -33,7 +33,8 @@ int main(int argc, char **argv) {
 		{ "move", 1 },		//Move focused window to workspace
 		{ "go",   1 },		//Change active workspace
 		{ "zoom", 0 },		//Zoom focused window
-		{ "kill", 0 }		//Kill focused window
+		{ "kill", 0 },		//Kill focused window
+		{ "exit", 0 }
 	}};
 
 	auto it = std::find_if(options.begin(), options.end(), [&](const Option &opt) {

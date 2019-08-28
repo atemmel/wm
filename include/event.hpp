@@ -11,6 +11,7 @@ enum {
 	GoDirection,
 	Zoom,
 	Kill,
+	Exit,
 	NEvents
 };
 

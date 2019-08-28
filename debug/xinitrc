@@ -1,2 +1,3 @@
 sxhkd -c sxhkdrc &
-exec ../bin/./wm
+~/.config/polybar/launch.sh &
+exec wm

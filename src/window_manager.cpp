@@ -1,10 +1,11 @@
-#define LOG_DEBUG 0
+#define LOG_DEBUG 1
 #define LOG_ERROR 1
 #include "event.hpp"
 #include "log.hpp"
 #include "window_manager.hpp"
 
 #include <X11/Xutil.h>
+#include <X11/Xatom.h>
 
 #include <iostream>
 #include <cassert>
@@ -72,8 +73,15 @@ void WindowManager::run() {
 
 	//Sources for icccm atoms:
 	//https://www.x.org/docs/ICCCM/icccm.pdf
-	_atomDeleteWindow = XInternAtom(_display, "WM_DELETE_WINDOW", False); //Page 43
-	_atomWMProtocols = XInternAtom(_display, "WM_PROTOCOLS", False); //Page 26
+	_atomDeleteWindow    = XInternAtom(_display, "WM_DELETE_WINDOW", False); //Page 43
+	_atomWMProtocols     = XInternAtom(_display, "WM_PROTOCOLS", False); //Page 26
+
+	_atomWMWindowType    = XInternAtom(_display, "_NET_WM_WINDOW_TYPE", False);
+	_atomWMWindowDock    = XInternAtom(_display, "_NET_WM_WINDOW_TYPE_DOCK", False);
+	_atomWMWindowToolbar = XInternAtom(_display, "_NET_WM_WINDOW_TYPE_TOOLBAR", False);
+	_atomWMWindowUtility = XInternAtom(_display, "_NET_WM_WINDOW_TYPE_UTILITY", False);
+	_atomWMWindowDialog  = XInternAtom(_display, "_NET_WM_WINDOW_TYPE_DIALOG", False);
+	_atomWMWindowMenu    = XInternAtom(_display, "_NET_WM_WINDOW_TYPE_MENU", False);
 
 	std::array<std::function<void(long*)>, static_cast<size_t>(Event::NEvents)>
 		events = {
@@ -97,6 +105,10 @@ void WindowManager::run() {
 				LogDebug << "Kill\n";
 				if(!_focused) return;
 				kill(*_focused);
+			},
+			[&](long *arg) {	//Exit
+				LogDebug << "Exit\n";
+				std::exit(EXIT_SUCCESS);
 			}
 		};
 
@@ -138,7 +150,6 @@ void WindowManager::run() {
 			case ClientMessage:
 				if(e.xclient.message_type == XInternAtom(_display, Event::RequestAtom, False) ) {
 					LogDebug << "Client message: " << e.xclient.data.l[0] << '\n';
-					LogDebug << &e.xclient.data.l[1] << '\n';
 					events[e.xclient.data.l[0]](&e.xclient.data.l[1]);
 				}
 				break;
@@ -183,24 +194,27 @@ void WindowManager::onConfigureRequest(const XConfigureRequestEvent &e) {
 		client.position = Vector2{e.x, e.y};
 		XConfigureWindow(_display, e.window, e.value_mask, &changes);
 		LogDebug << "Resize " << e.window << " to w:" 
-			<< e.width << " h:" << e.height;
+			<< e.width << " h:" << e.height << '\n';
 	}
 }
 
 void WindowManager::onMapRequest(const XMapRequestEvent &e) {
+
+	LogDebug << "Map as usual\n";
+
 	frame(e.window, false);
 	XMapWindow(_display, e.window);
-	focus(find(e.window));
+	focus(find(e.window) );
 }
 
 void WindowManager::onUnmapNotify(const XUnmapEvent &e) {
 	if(e.event == _root) {
-		LogDebug << "Ignore UnmapNotify for reparented pre-existing window " << e.window;
+		LogDebug << "Ignore UnmapNotify for reparented pre-existing window " << e.window << '\n';
 		return;
 	}
 
 	if(!exists(e.window) ) {	//TODO: Rewrite this so there is no double lookup
-		LogDebug << "Ignore UnmapNotify for non-client window " << e.window;
+		LogDebug << "Ignore UnmapNotify for non-client window " << e.window << '\n';
 		return;
 	}
 
@@ -209,7 +223,7 @@ void WindowManager::onUnmapNotify(const XUnmapEvent &e) {
 
 void WindowManager::onButtonPress(const XButtonEvent &e) {
 	const Client &client = find(e.window);
-	LogDebug << "Click in window " << std::to_string(e.window);
+	LogDebug << "Click in window " << e.window << '\n';
 
 	startCursorPos = {e.x_root, e.y_root};
 
@@ -237,7 +251,7 @@ void WindowManager::onFocusIn(const XFocusChangeEvent &e) {
 }
 
 void WindowManager::onEnterNotify(const XEnterWindowEvent &e) {
-	LogDebug << "Entered window " << std::to_string(e.window);
+	LogDebug << "Entered window " << e.window << '\n';
 	focus(find(e.window));
 }
 
@@ -308,6 +322,33 @@ void WindowManager::frame(Window w, bool createdBefore) {
 		}
 	}
 
+	unsigned char *propStr = nullptr;
+
+	//Dummy variables
+	int di;
+	unsigned long dl;
+	Atom da;
+
+	bool status = XGetWindowProperty(_display, w, _atomWMWindowType, 0, sizeof(Atom), False, 
+				XA_ATOM, &da, &di, &dl, &dl, &propStr) == Success;
+
+	LogDebug << "Status: " << std::boolalpha << status << '\n';
+	LogDebug << "Propstr: " << std::boolalpha << (propStr != nullptr) << '\n';
+
+	if(status && propStr) {
+		const Atom prop = static_cast<Atom>(propStr[0]);
+		if(prop == _atomWMWindowDock
+				|| prop == _atomWMWindowToolbar
+				|| prop == _atomWMWindowUtility
+				|| prop == _atomWMWindowDialog
+				|| prop == _atomWMWindowMenu) {
+
+			LogDebug << "Window " << propStr << " not managed\n";
+			//Do not manage the window
+			return;
+		} else LogDebug << "Window managed\n";
+	} 
+
 	const Window frame = XCreateSimpleWindow(
 			_display,
 			_root,
@@ -371,7 +412,7 @@ void WindowManager::frame(Window w, bool createdBefore) {
 			None,
 			None);
 
-	LogDebug << "Framed window " << w << " [" << frame << ']';
+	LogDebug << "Framed window " << w << " [" << frame << "]\n";
 }
 
 void WindowManager::unframe(const Client &client) {
@@ -382,7 +423,7 @@ void WindowManager::unframe(const Client &client) {
 	erase(client.window);
 	focusNext();
 
-	LogDebug << "Unframed Window" << client.window << " [" << client.border << ']';
+	LogDebug << "Unframed Window" << client.window << " [" << client.border << "]\n";
 }
 
 void WindowManager::switchWorkspace(int workspace) {
@@ -401,7 +442,6 @@ void WindowManager::switchWorkspace(int workspace) {
 	}
 
 	focusNext();
-
 	printLayout();
 }
 
@@ -480,7 +520,7 @@ void WindowManager::printLayout() const {
 		return static_cast<int>(ws) == _currentWorkspace ? current : other;
 	};
 
-	LogDebug 
+	LogDebug << "Layout:\n" 
 		<< "    "	<<			p(North) << '\n'
 		<< p(West)	<< ' ' <<	p(Center) << ' ' 	<< 	p(East) << '\n'
 		<< "    "	<< 			p(South) << '\n';
