@@ -14,6 +14,6 @@ enum {
 	NEvents
 };
 
-};
+}
 
 #endif

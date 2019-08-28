@@ -97,9 +97,9 @@ class WindowManager {
 		//Near-primitives
 		Vector2 startCursorPos, startWindowPos, startWindowSize;
 		Display *_display;
+		const Window _root;
 		Screen *_screen;
 		Client *_focused;
-		const Window _root;
 		static bool _wmDetected;
 		int _currentWorkspace = 0;
 };

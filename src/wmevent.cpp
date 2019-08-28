@@ -31,9 +31,9 @@ int main(int argc, char **argv) {
 
 	constexpr std::array<Option, static_cast<size_t>(Event::NEvents)> options = {{
 		{ "move", 1 },		//Move focused window to workspace
-		{ "go", 1 },		//Change active workspace
-		{ "zoom", 0 },			//Zoom focused window
-		{ "kill", 0 }			//Kill focused window
+		{ "go",   1 },		//Change active workspace
+		{ "zoom", 0 },		//Zoom focused window
+		{ "kill", 0 }		//Kill focused window
 	}};
 
 	auto it = std::find_if(options.begin(), options.end(), [&](const Option &opt) {
@@ -78,8 +78,8 @@ static long dirToLong(std::string_view str) {
 	dirs[WindowManager::Direction::Up]    = "up";
 	dirs[WindowManager::Direction::Down]  = "down";
 
-	for(long i = 0; i < dirs.size(); i++) {
-		if(str == dirs[i]) return i;
+	for(size_t i = 0; i < dirs.size(); i++) {
+		if(str == dirs[i]) return static_cast<long>(i);
 	}
 
 	return -1l;

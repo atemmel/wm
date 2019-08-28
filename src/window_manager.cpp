@@ -386,8 +386,6 @@ void WindowManager::unframe(const Client &client) {
 }
 
 void WindowManager::switchWorkspace(int workspace) {
-	XWindowAttributes xattr;
-
 	for(auto &client : _clients) {
 		if(client.workspace == _currentWorkspace) {
 			hide(client);
@@ -419,11 +417,9 @@ void WindowManager::hide(Client &client) {
 		client.border,
 		xattr.x + _screen->width,
 		xattr.y + _screen->height);
-};
+}
 
 void WindowManager::show(const Client &client) {
-	XWindowAttributes xattr;
-
 	XMoveWindow(
 		_display,
 		client.border,
@@ -479,9 +475,8 @@ void WindowManager::zoomClient(Client &client) {
 }
 
 void WindowManager::printLayout() const {
-	using Ws = WindowManager::Ws;
-	constexpr auto current = "[*]", other = "[ ]";
-	auto p = [&](Ws ws) {
+	constexpr std::string_view current = "[*]", other = "[ ]";
+	auto p = [&](WindowManager::Ws ws) {
 		return static_cast<int>(ws) == _currentWorkspace ? current : other;
 	};
 

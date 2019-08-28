@@ -1,15 +1,23 @@
-TARGETS := wm wmevent
-LDLIBS := -lX11
-CC := g++
-SRCDIR := src
-SRC := $(wildcard $(SRCDIR)/*.cpp)
-SRC := $(filter-out $(SRCDIR)/wm.cpp, $(SRC))
-SRC := $(filter-out $(SRCDIR)/wmevent.cpp, $(SRC))
-OBJ := $(SRC:%.cpp=%.o)
-INCLUDES := -Iinclude/
-CXXFLAGS := -std=c++17
+all:
+	make -f template.mk TARGET=wm EXCLUDE=wmevent
+	make -f template.mk TARGET=wmevent EXCLUDE=wm
 
-all: $(TARGETS)
+debug:
+	make debug -f template.mk TARGET=wm EXCLUDE=wmevent
+	make debug -f template.mk TARGET=wmevent EXCLUDE=wm
 
-$(TARGETS): $(SRC)
-	$(CC) -o $@ $(SRCDIR)/$@.cpp $^ $(LDLIBS) $(CXXFLAGS) $(INCLUDES)
+release:
+	make release -f template.mk TARGET=wm EXCLUDE=wmevent
+	make release -f template.mk TARGET=wmevent EXCLUDE=wm
+
+clean:
+	make clean -f template.mk TARGET=wm EXCLUDE=wmevent
+	make clean -f template.mk TARGET=wmevent EXCLUDE=wm
+
+setup:
+	make setup -f template.mk TARGET=wm EXCLUDE=wmevent
+	make setup -f template.mk TARGET=wmevent EXCLUDE=wm
+
+install:
+	make install -f template.mk TARGET=wm EXCLUDE=wmevent
+	make install -f template.mk TARGET=wmevent EXCLUDE=wm

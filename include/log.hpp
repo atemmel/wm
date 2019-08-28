@@ -23,7 +23,7 @@ namespace Logger {
 	};
 
 	constexpr static DummyStream dummyStream;
-};
+}
 
 #define CURRENT_LOCATION "File:" << __FILE__ << " Line:" << __LINE__ << ' '
 #define DEBUG_STREAM std::cout
