@@ -79,6 +79,8 @@ class WindowManager {
 		void kill(const Client &client);
 		void moveClient(Client &client, int workspace);
 		void zoomClient(Client &client);
+		void registerDock(Window w);
+		void setOuterBorder(int upper, int lower);
 		constexpr int workspaceMap(Direction dir) const;
 
 		//Helper functions
@@ -109,6 +111,8 @@ class WindowManager {
 		Client *_focused;
 		static bool _wmDetected;
 		int _currentWorkspace = 0;
+		int _lowerBorder = 0;
+		int _upperBorder = 0;
 };
 
 #endif

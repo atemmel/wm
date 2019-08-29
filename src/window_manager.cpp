@@ -199,7 +199,37 @@ void WindowManager::onConfigureRequest(const XConfigureRequestEvent &e) {
 }
 
 void WindowManager::onMapRequest(const XMapRequestEvent &e) {
+	unsigned char *propStr = nullptr;
 
+	//Dummy variables
+	int di;
+	unsigned long dl;
+	Atom da;
+
+	bool status = XGetWindowProperty(_display, e.window, _atomWMWindowType, 0, sizeof(Atom), False, 
+				XA_ATOM, &da, &di, &dl, &dl, &propStr) == Success;
+
+	LogDebug << "Status: " << std::boolalpha << status << '\n';
+	LogDebug << "Propstr: " << std::boolalpha << (propStr != nullptr) << '\n';
+
+	if(status && propStr) {
+		const Atom prop = static_cast<Atom>(propStr[0]);
+
+		if(prop == _atomWMWindowDock) {
+				registerDock(e.window);
+		}
+
+		if(prop == _atomWMWindowDock ||
+				prop == _atomWMWindowToolbar ||
+				prop == _atomWMWindowUtility ||
+				prop == _atomWMWindowMenu) {
+			LogDebug << "Window " << propStr << " not managed\n";
+			XMapWindow(_display, e.window);
+			return;	//Do not manage the window
+		}
+	} 
+
+	LogDebug << "Window managed\n";
 	LogDebug << "Map as usual\n";
 
 	frame(e.window, false);
@@ -271,8 +301,7 @@ void WindowManager::onMotionNotify(const XMotionEvent &e) {
 				newPos.x,
 				newPos.y);
 
-	}
-	else if(e.state & Button3Mask) { //Resize window
+	} else if(e.state & Button3Mask) { //Resize window
 		constexpr int minWinSize = 64;
 		const Vector2 delta = cursorPos - startCursorPos;
 		const Vector2 newSize = {
@@ -316,38 +345,19 @@ void WindowManager::frame(Window w, bool createdBefore) {
 	assert(XGetWindowAttributes(_display, w, &attrs) );
 
 	if(createdBefore) {
-		if(attrs.override_redirect || 
-				attrs.map_state != IsViewable) {
+		if(attrs.override_redirect || attrs.map_state != IsViewable) {
 			return;
 		}
 	}
 
-	unsigned char *propStr = nullptr;
+	if(attrs.y < _upperBorder) {
+		attrs.y = _upperBorder;
+	}
 
-	//Dummy variables
-	int di;
-	unsigned long dl;
-	Atom da;
-
-	bool status = XGetWindowProperty(_display, w, _atomWMWindowType, 0, sizeof(Atom), False, 
-				XA_ATOM, &da, &di, &dl, &dl, &propStr) == Success;
-
-	LogDebug << "Status: " << std::boolalpha << status << '\n';
-	LogDebug << "Propstr: " << std::boolalpha << (propStr != nullptr) << '\n';
-
-	if(status && propStr) {
-		const Atom prop = static_cast<Atom>(propStr[0]);
-		if(prop == _atomWMWindowDock
-				|| prop == _atomWMWindowToolbar
-				|| prop == _atomWMWindowUtility
-				|| prop == _atomWMWindowDialog
-				|| prop == _atomWMWindowMenu) {
-
-			LogDebug << "Window " << propStr << " not managed\n";
-			//Do not manage the window
-			return;
-		} else LogDebug << "Window managed\n";
-	} 
+	if(const int dy = attrs.height + _lowerBorder + attrs.y - _screen->height; 
+			dy > 0) {
+		attrs.height -= dy;
+	}
 
 	const Window frame = XCreateSimpleWindow(
 			_display,
@@ -383,7 +393,8 @@ void WindowManager::frame(Window w, bool createdBefore) {
 		_currentWorkspace,
 		{attrs.x, attrs.y},
 		{attrs.width, attrs.height},
-		False
+		{attrs.x, attrs.y},
+		false
 	});
 
 	//Grab Alt + LMB
@@ -489,9 +500,10 @@ void WindowManager::moveClient(Client &client, int workspace) {
 void WindowManager::zoomClient(Client &client) {
 	constexpr int border2W = static_cast<int>(borderWidth << 1);
 	Vector2 size = client.fullscreen ? client.size 
-		: Vector2{_screen->width - border2W, _screen->height - border2W};
+		: Vector2{_screen->width - border2W, _screen->height 
+			- border2W - (_lowerBorder + _upperBorder)};
 	Vector2 position = client.fullscreen ? client.position 
-		: Vector2();
+		: Vector2(0, _upperBorder);
 
 	XResizeWindow(
 			_display, 
@@ -512,6 +524,26 @@ void WindowManager::zoomClient(Client &client) {
 			position.y);
 
 	client.fullscreen ^= 1;
+}
+
+void WindowManager::registerDock(Window w) {
+	XWindowAttributes xattr;
+	XGetWindowAttributes(_display, w, &xattr);
+
+	unsigned int lowerRadius = xattr.height,
+				 upperRadius = xattr.height;
+
+	if(xattr.y == 0) {
+		lowerRadius = _lowerBorder;
+	} else {
+		upperRadius = _upperBorder;
+	}
+
+	setOuterBorder(upperRadius, lowerRadius);
+}
+
+void WindowManager::setOuterBorder(int upper, int lower) {
+	_upperBorder = upper, _lowerBorder = lower;
 }
 
 void WindowManager::printLayout() const {
