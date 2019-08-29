@@ -7,6 +7,7 @@ extern "C" {
 }
 
 #include "vector2.hpp"
+#include "atoms.hpp"
 
 #include <unordered_map>
 #include <functional>
@@ -71,7 +72,7 @@ class WindowManager {
 		//Basic functions
 		void focus(Client &client);
 		void focusNext();
-		void frame(Window w, bool createdBefore);
+		bool frame(Window w, bool createdBefore);
 		void unframe(const Client &client);
 		void switchWorkspace(int workspace);
 		void hide(Client &client);
@@ -92,27 +93,22 @@ class WindowManager {
 		//Containers
 		std::vector<Client> _clients;
 
-		//Atoms
-		Atom _atomDeleteWindow;
-		Atom _atomWMProtocols;
-
-		Atom _atomWMWindowType;
-		Atom _atomWMWindowDock;
-		Atom _atomWMWindowToolbar;
-		Atom _atomWMWindowUtility;
-		Atom _atomWMWindowDialog;
-		Atom _atomWMWindowMenu;
-
 		//Near-primitives
 		Vector2 startCursorPos, startWindowPos, startWindowSize;
 		Display *_display;
 		const Window _root;
-		Screen *_screen;
+		const Window _check;	//Dummy window to allow _NET_SUPPORTING_WM_CHECK
 		Client *_focused;
+		Screen *_screen;
 		static bool _wmDetected;
 		int _currentWorkspace = 0;
 		int _lowerBorder = 0;
 		int _upperBorder = 0;
+
+		//Atoms
+		NetAtom _netAtoms;
+		IccAtom _iccAtoms;
+		OtherAtom _otherAtoms;
 };
 
 #endif

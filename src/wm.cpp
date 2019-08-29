@@ -4,9 +4,7 @@
 #include "window_manager.hpp"
 
 int main(int argc, char **argv) {
-
 	auto wm = WindowManager::create();
-	std::cout << LOG_ERROR << '\n';
 
 	if(!wm) {
 		LogError << "Failed to initialize window manager.";

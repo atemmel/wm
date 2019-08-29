@@ -25,7 +25,12 @@ std::unique_ptr<WindowManager> WindowManager::create() {
 }
 
 WindowManager::WindowManager(Display *display) 
-	: _display(display), _root(DefaultRootWindow(_display) ), _focused(nullptr) {
+	: _display(display), _root(DefaultRootWindow(_display) ), 
+	_check(XCreateSimpleWindow(_display, _root, 0, 0, 1, 1, 0, 0, 0) ),
+	_focused(nullptr),
+	_netAtoms(_display),
+	_iccAtoms(_display),
+	_otherAtoms(_display) {
 }
 
 WindowManager::~WindowManager() {
@@ -40,11 +45,13 @@ void WindowManager::run() {
 			_root,
 			SubstructureRedirectMask | SubstructureNotifyMask);
 	XSync(_display, False);	//Flush errors
+
 	if(_wmDetected) {
 		LogError << "Detected another window manager on display " 
 			<< XDisplayString(_display);
 		return;
 	}
+
 	//Set regular error handler
 	XSetErrorHandler(&WindowManager::onXError);
 
@@ -62,26 +69,26 @@ void WindowManager::run() {
 				&topLevel,
 				&n_topLevel));
 
+	LogDebug << "Mapping toplevel windows:\n";
 	for(unsigned int i = 0; i < n_topLevel; i++) {
+		LogDebug << i << " : " << topLevel[i] << '\n';
 		frame(topLevel[i], true);
 	}
+	LogDebug << "Mapped " << n_topLevel << " toplevel windows\n";
 
 	XFree(topLevel);
 	XUngrabServer(_display);
 
 	_screen = XDefaultScreenOfDisplay(_display);
 
-	//Sources for icccm atoms:
-	//https://www.x.org/docs/ICCCM/icccm.pdf
-	_atomDeleteWindow    = XInternAtom(_display, "WM_DELETE_WINDOW", False); //Page 43
-	_atomWMProtocols     = XInternAtom(_display, "WM_PROTOCOLS", False); //Page 26
-
-	_atomWMWindowType    = XInternAtom(_display, "_NET_WM_WINDOW_TYPE", False);
-	_atomWMWindowDock    = XInternAtom(_display, "_NET_WM_WINDOW_TYPE_DOCK", False);
-	_atomWMWindowToolbar = XInternAtom(_display, "_NET_WM_WINDOW_TYPE_TOOLBAR", False);
-	_atomWMWindowUtility = XInternAtom(_display, "_NET_WM_WINDOW_TYPE_UTILITY", False);
-	_atomWMWindowDialog  = XInternAtom(_display, "_NET_WM_WINDOW_TYPE_DIALOG", False);
-	_atomWMWindowMenu    = XInternAtom(_display, "_NET_WM_WINDOW_TYPE_MENU", False);
+	XChangeProperty(_display, _check, _netAtoms.WMCheck, XA_WINDOW, 32, PropModeReplace,
+			reinterpret_cast<const unsigned char*>(&_check), 1);
+	XChangeProperty(_display, _check, _netAtoms.WMName, _otherAtoms.utf8str, 8, PropModeReplace,
+			reinterpret_cast<const unsigned char*>("wm"), 5);
+	XChangeProperty(_display, _root, _netAtoms.WMCheck, XA_WINDOW, 32, PropModeReplace,
+			reinterpret_cast<const unsigned char*>(&_check), 1);
+	XChangeProperty(_display, _root, _netAtoms.WMSupported, XA_ATOM, 32, PropModeReplace,
+			reinterpret_cast<const unsigned char*>(&_netAtoms), _netAtoms.size() );
 
 	std::array<std::function<void(long*)>, static_cast<size_t>(Event::NEvents)>
 		events = {
@@ -199,42 +206,12 @@ void WindowManager::onConfigureRequest(const XConfigureRequestEvent &e) {
 }
 
 void WindowManager::onMapRequest(const XMapRequestEvent &e) {
-	unsigned char *propStr = nullptr;
-
-	//Dummy variables
-	int di;
-	unsigned long dl;
-	Atom da;
-
-	bool status = XGetWindowProperty(_display, e.window, _atomWMWindowType, 0, sizeof(Atom), False, 
-				XA_ATOM, &da, &di, &dl, &dl, &propStr) == Success;
-
-	LogDebug << "Status: " << std::boolalpha << status << '\n';
-	LogDebug << "Propstr: " << std::boolalpha << (propStr != nullptr) << '\n';
-
-	if(status && propStr) {
-		const Atom prop = static_cast<Atom>(propStr[0]);
-
-		if(prop == _atomWMWindowDock) {
-				registerDock(e.window);
-		}
-
-		if(prop == _atomWMWindowDock ||
-				prop == _atomWMWindowToolbar ||
-				prop == _atomWMWindowUtility ||
-				prop == _atomWMWindowMenu) {
-			LogDebug << "Window " << propStr << " not managed\n";
-			XMapWindow(_display, e.window);
-			return;	//Do not manage the window
-		}
-	} 
-
-	LogDebug << "Window managed\n";
-	LogDebug << "Map as usual\n";
-
-	frame(e.window, false);
+	LogDebug << "Attempting to map " << e.window << '\n';
+	bool framed = frame(e.window, false);
 	XMapWindow(_display, e.window);
-	focus(find(e.window) );
+	if(framed) {
+		focus(find(e.window) );
+	}
 }
 
 void WindowManager::onUnmapNotify(const XUnmapEvent &e) {
@@ -339,16 +316,52 @@ void WindowManager::focusNext() {
 	XSetInputFocus(_display, _root, RevertToPointerRoot, CurrentTime);
 }
 
-void WindowManager::frame(Window w, bool createdBefore) {
+bool WindowManager::frame(Window w, bool createdBefore) {
 
 	XWindowAttributes attrs;
 	assert(XGetWindowAttributes(_display, w, &attrs) );
 
 	if(createdBefore) {
 		if(attrs.override_redirect || attrs.map_state != IsViewable) {
-			return;
+			LogDebug << "Window " << w << " not managed\n";
+			return false;
 		}
 	}
+
+	unsigned char *propStr = nullptr;
+
+	//Dummy variables
+	int di;
+	unsigned long dl;
+	Atom da;
+
+	bool status = XGetWindowProperty(_display, w, _netAtoms.WMWindowType, 0, sizeof(Atom), 
+			False, XA_ATOM, &da, &di, &dl, &dl, &propStr) == Success;
+
+	if(status && propStr) {
+		const Atom prop = static_cast<Atom>(propStr[0]);
+
+		LogDebug << "Window " << w << " is _atomWMWindowDock: " << std::boolalpha <<
+			(prop == _netAtoms.WMWindowDock) << '\n';
+		LogDebug << "Window " << w << " is _atomWMWindowToolbar: " << std::boolalpha <<
+			(prop == _netAtoms.WMWindowToolbar) << '\n';
+		LogDebug << "Window " << w << " is _atomWMWindowUtility: " << std::boolalpha <<
+			(prop == _netAtoms.WMWindowUtility) << '\n';
+		LogDebug << "Window " << w << " is _atomWMWindowMenu: " << std::boolalpha <<
+			(prop == _netAtoms.WMWindowMenu) << '\n';
+
+		if(prop == _netAtoms.WMWindowDock) {
+				registerDock(w);
+		}
+
+		if(prop == _netAtoms.WMWindowDock ||
+				prop == _netAtoms.WMWindowToolbar ||
+				prop == _netAtoms.WMWindowUtility ||
+				prop == _netAtoms.WMWindowMenu) {
+			LogDebug << "Window " << w << " not managed\n";
+			return false;	//Do not manage the window
+		}
+	} 
 
 	if(attrs.y < _upperBorder) {
 		attrs.y = _upperBorder;
@@ -424,6 +437,7 @@ void WindowManager::frame(Window w, bool createdBefore) {
 			None);
 
 	LogDebug << "Framed window " << w << " [" << frame << "]\n";
+	return true;
 }
 
 void WindowManager::unframe(const Client &client) {
@@ -482,9 +496,9 @@ void WindowManager::kill(const Client &client) {
 	XEvent ev;
     ev.type = ClientMessage;
     ev.xclient.window = client.window;
-    ev.xclient.message_type = _atomWMProtocols;
+    ev.xclient.message_type = _iccAtoms.WMProtocols;
     ev.xclient.format = 32;
-    ev.xclient.data.l[0] = _atomDeleteWindow;
+    ev.xclient.data.l[0] = _iccAtoms.DeleteWindow;
     ev.xclient.data.l[1] = CurrentTime;
     XSendEvent(_display, client.window, False, NoEventMask, &ev);
 	focusNext();
