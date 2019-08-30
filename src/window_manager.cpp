@@ -376,13 +376,13 @@ bool WindowManager::frame(Window w, bool createdBefore) {
 	Atom* prop = getWindowProperty(w);
 
 	if(prop) {
-		LogDebug << "Window " << w << " is _atomWMWindowDock: " << std::boolalpha <<
+		LogDebug << "Window " << w << " is _NET_WM_WINDOW_DOCK: " << std::boolalpha <<
 			(*prop == _netAtoms.WMWindowDock) << '\n';
-		LogDebug << "Window " << w << " is _atomWMWindowToolbar: " << std::boolalpha <<
+		LogDebug << "Window " << w << " is _NET_WM_WINDOW_TOOLBAR: " << std::boolalpha <<
 			(*prop == _netAtoms.WMWindowToolbar) << '\n';
-		LogDebug << "Window " << w << " is _atomWMWindowUtility: " << std::boolalpha <<
+		LogDebug << "Window " << w << " is _NET_WM_WINDOW_UTILITY: " << std::boolalpha <<
 			(*prop == _netAtoms.WMWindowUtility) << '\n';
-		LogDebug << "Window " << w << " is _atomWMWindowMenu: " << std::boolalpha <<
+		LogDebug << "Window " << w << " is _NET_WM_WINDOW_MENU: " << std::boolalpha <<
 			(*prop == _netAtoms.WMWindowMenu) << '\n';
 
 		if(*prop == _netAtoms.WMWindowDock) {
