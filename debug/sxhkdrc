@@ -10,6 +10,9 @@ alt + {h, j, k, l}
 alt + shift + {h, j, k, l}
 	wmevent move {left, down, up, right}
 
+alt + {e, w}
+	wmevent {focusnext, focusprev}
+
 alt + q
 	wmevent kill
 
