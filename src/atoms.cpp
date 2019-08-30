@@ -23,5 +23,5 @@ WMProtocols    (XInternAtom(display, "WM_PROTOCOLS", False)) {
 }
 
 OtherAtom::OtherAtom(Display *display) :
-utf8str        (XInternAtom(display, "UTF8_STR", False)) {
+utf8str        (XInternAtom(display, "UTF8_STRING", False)) {
 }

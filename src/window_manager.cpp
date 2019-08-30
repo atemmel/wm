@@ -9,6 +9,7 @@
 
 #include <iostream>
 #include <cassert>
+#include <cstring>
 #include <string>
 #include <array>
 
@@ -81,15 +82,23 @@ void WindowManager::run() {
 
 	_screen = XDefaultScreenOfDisplay(_display);
 
+	//Set wm check window
 	XChangeProperty(_display, _check, _netAtoms.WMCheck, XA_WINDOW, 32, PropModeReplace,
 			reinterpret_cast<const unsigned char*>(&_check), 1);
-	XChangeProperty(_display, _check, _netAtoms.WMName, _otherAtoms.utf8str, 8, PropModeReplace,
-			reinterpret_cast<const unsigned char*>("wm"), 5);
+
+	//Set wm name
+	XChangeProperty(_display, _root, _netAtoms.WMName, _otherAtoms.utf8str, 8, PropModeReplace,
+			reinterpret_cast<const unsigned char*>("wm"), strlen("wm") );
+
+	//Restore wm check window
 	XChangeProperty(_display, _root, _netAtoms.WMCheck, XA_WINDOW, 32, PropModeReplace,
 			reinterpret_cast<const unsigned char*>(&_check), 1);
+
+	//Set all supported net atoms
 	XChangeProperty(_display, _root, _netAtoms.WMSupported, XA_ATOM, 32, PropModeReplace,
 			reinterpret_cast<const unsigned char*>(&_netAtoms), _netAtoms.size() );
 
+	//IPC event table
 	std::array<std::function<void(long*)>, static_cast<size_t>(Event::NEvents)>
 		events = {
 			[&](long *arg) {	//Move Direction
