@@ -71,7 +71,9 @@ class WindowManager {
 
 		//Basic functions
 		void focus(Client &client);
+		void focusLast();
 		void focusNext();
+		void focusPrev();
 		bool frame(Window w, bool createdBefore);
 		void unframe(const Client &client);
 		void switchWorkspace(int workspace);

@@ -12,6 +12,8 @@ enum {
 	Zoom,
 	Kill,
 	Exit,
+	FocusNext,
+	FocusPrev,
 	NEvents
 };
 

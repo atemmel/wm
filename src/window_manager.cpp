@@ -116,6 +116,14 @@ void WindowManager::run() {
 			[&](long *arg) {	//Exit
 				LogDebug << "Exit\n";
 				std::exit(EXIT_SUCCESS);
+			},
+			[&](long *arg) {	//Focus next
+				LogDebug << "Focus next\n";
+				focusNext();
+			},
+			[&](long *arg) {	//Focus prev
+				LogDebug << "Focus prev\n";
+				focusPrev();
 			}
 		};
 
@@ -304,7 +312,7 @@ void WindowManager::focus(Client &client) {
 	XSetInputFocus(_display, client.window, RevertToParent, CurrentTime);
 }
 
-void WindowManager::focusNext() {
+void WindowManager::focusLast() {
 	for(auto it = _clients.rbegin(); it != _clients.rend(); it++) {
 		if(it->workspace == _currentWorkspace) {
 			focus(*it);
@@ -314,6 +322,33 @@ void WindowManager::focusNext() {
 
 	_focused = nullptr;
 	XSetInputFocus(_display, _root, RevertToPointerRoot, CurrentTime);
+}
+
+void WindowManager::focusNext() {
+	if(!_focused) return;
+
+	int diff = _focused - &*_clients.begin();
+	for(auto it = _clients.begin() + diff + 1; true; it++) {
+		if(it >= _clients.end() ) it = _clients.begin();
+		if(it->workspace == _currentWorkspace) {
+			focus(*it);
+			return;
+		}
+	}
+}
+
+void WindowManager::focusPrev() {
+	if(!_focused) return;
+
+	int diff = _focused - &*_clients.begin();
+	for(auto it = _clients.begin() + diff - 1; true ; it--) {
+		if(it < _clients.begin() ) it = _clients.end() - 1;
+		if(it->workspace == _currentWorkspace) {
+			focus(*it);
+			return;
+		}
+	}
+
 }
 
 bool WindowManager::frame(Window w, bool createdBefore) {
@@ -359,9 +394,12 @@ bool WindowManager::frame(Window w, bool createdBefore) {
 				prop == _netAtoms.WMWindowUtility ||
 				prop == _netAtoms.WMWindowMenu) {
 			LogDebug << "Window " << w << " not managed\n";
+			XFree(propStr);
 			return false;	//Do not manage the window
 		}
 	} 
+
+	if(propStr) XFree(propStr);
 
 	if(attrs.y < _upperBorder) {
 		attrs.y = _upperBorder;
@@ -446,7 +484,7 @@ void WindowManager::unframe(const Client &client) {
 
 	XDestroyWindow(_display, client.border);
 	erase(client.window);
-	focusNext();
+	focusLast();
 
 	LogDebug << "Unframed Window" << client.window << " [" << client.border << "]\n";
 }
@@ -466,7 +504,7 @@ void WindowManager::switchWorkspace(int workspace) {
 		}
 	}
 
-	focusNext();
+	focusLast();
 	printLayout();
 }
 
@@ -501,14 +539,14 @@ void WindowManager::kill(const Client &client) {
     ev.xclient.data.l[0] = _iccAtoms.DeleteWindow;
     ev.xclient.data.l[1] = CurrentTime;
     XSendEvent(_display, client.window, False, NoEventMask, &ev);
-	focusNext();
+	focusLast();
 }
 
 void WindowManager::moveClient(Client &client, int workspace) {
 	if(client.workspace == workspace) return;
 	client.workspace = workspace;
 	hide(client);
-	focusNext();
+	focusLast();
 }
 
 void WindowManager::zoomClient(Client &client) {
@@ -560,18 +598,6 @@ void WindowManager::setOuterBorder(int upper, int lower) {
 	_upperBorder = upper, _lowerBorder = lower;
 }
 
-void WindowManager::printLayout() const {
-	constexpr std::string_view current = "[*]", other = "[ ]";
-	auto p = [&](WindowManager::Ws ws) {
-		return static_cast<int>(ws) == _currentWorkspace ? current : other;
-	};
-
-	LogDebug << "Layout:\n" 
-		<< "    "	<<			p(North) << '\n'
-		<< p(West)	<< ' ' <<	p(Center) << ' ' 	<< 	p(East) << '\n'
-		<< "    "	<< 			p(South) << '\n';
-}
-
 constexpr int WindowManager::workspaceMap(Direction dir) const {
 
 	//Table to map current workspace + direction to a new workspace
@@ -585,6 +611,18 @@ constexpr int WindowManager::workspaceMap(Direction dir) const {
 	}};
 
 	return static_cast<int>(table[_currentWorkspace][static_cast<int>(dir)]);
+}
+
+void WindowManager::printLayout() const {
+	constexpr std::string_view current = "[*]", other = "[ ]";
+	auto p = [&](WindowManager::Ws ws) {
+		return static_cast<int>(ws) == _currentWorkspace ? current : other;
+	};
+
+	LogDebug << "Layout:\n" 
+		<< "    "	<<			p(North) << '\n'
+		<< p(West)	<< ' ' <<	p(Center) << ' ' 	<< 	p(East) << '\n'
+		<< "    "	<< 			p(South) << '\n';
 }
 
 bool WindowManager::exists(Window w) const {
