@@ -1,4 +1,4 @@
-#define LOG_DEBUG 1
+#define LOG_DEBUG 0
 #define LOG_ERROR 1
 #include "event.hpp"
 #include "log.hpp"
@@ -219,6 +219,7 @@ void WindowManager::onConfigureRequest(const XConfigureRequestEvent &e) {
 		XConfigureWindow(_display, e.window, e.value_mask, &changes);
 		LogDebug << "Resize " << e.window << " to w:" 
 			<< e.width << " h:" << e.height << '\n';
+
 	}
 }
 
@@ -372,43 +373,33 @@ bool WindowManager::frame(Window w, bool createdBefore) {
 		}
 	}
 
-	unsigned char *propStr = nullptr;
+	Atom* prop = getWindowProperty(w);
 
-	//Dummy variables
-	int di;
-	unsigned long dl;
-	Atom da;
-
-	bool status = XGetWindowProperty(_display, w, _netAtoms.WMWindowType, 0, sizeof(Atom), 
-			False, XA_ATOM, &da, &di, &dl, &dl, &propStr) == Success;
-
-	if(status && propStr) {
-		const Atom prop = static_cast<Atom>(propStr[0]);
-
+	if(prop) {
 		LogDebug << "Window " << w << " is _atomWMWindowDock: " << std::boolalpha <<
-			(prop == _netAtoms.WMWindowDock) << '\n';
+			(*prop == _netAtoms.WMWindowDock) << '\n';
 		LogDebug << "Window " << w << " is _atomWMWindowToolbar: " << std::boolalpha <<
-			(prop == _netAtoms.WMWindowToolbar) << '\n';
+			(*prop == _netAtoms.WMWindowToolbar) << '\n';
 		LogDebug << "Window " << w << " is _atomWMWindowUtility: " << std::boolalpha <<
-			(prop == _netAtoms.WMWindowUtility) << '\n';
+			(*prop == _netAtoms.WMWindowUtility) << '\n';
 		LogDebug << "Window " << w << " is _atomWMWindowMenu: " << std::boolalpha <<
-			(prop == _netAtoms.WMWindowMenu) << '\n';
+			(*prop == _netAtoms.WMWindowMenu) << '\n';
 
-		if(prop == _netAtoms.WMWindowDock) {
+		if(*prop == _netAtoms.WMWindowDock) {
 				registerDock(w);
 		}
 
-		if(prop == _netAtoms.WMWindowDock ||
-				prop == _netAtoms.WMWindowToolbar ||
-				prop == _netAtoms.WMWindowUtility ||
-				prop == _netAtoms.WMWindowMenu) {
+		if(*prop == _netAtoms.WMWindowDock ||
+				*prop == _netAtoms.WMWindowToolbar ||
+				*prop == _netAtoms.WMWindowUtility ||
+				*prop == _netAtoms.WMWindowMenu) {
 			LogDebug << "Window " << w << " not managed\n";
-			XFree(propStr);
+			XFree(prop);
 			return false;	//Do not manage the window
 		}
-	} 
 
-	if(propStr) XFree(propStr);
+		XFree(prop);	//Only free what is not nullptr
+	} 
 
 	if(attrs.y < _upperBorder) {
 		attrs.y = _upperBorder;
@@ -585,6 +576,25 @@ void WindowManager::zoomClient(Client &client) {
 			position.y);
 
 	client.fullscreen ^= 1;
+}
+
+Atom* WindowManager::getWindowProperty(Window w) const {
+	//Data ptr
+	unsigned char *propStr = nullptr;
+	//Dummy variables
+	int di;
+	unsigned long dl;
+	Atom da;
+
+	bool status = XGetWindowProperty(_display, w, _netAtoms.WMWindowType, 0, sizeof(Atom), 
+			False, XA_ATOM, &da, &di, &dl, &dl, &propStr) == Success;
+
+	if(status && propStr) {
+		//Don't forget to free!
+		return reinterpret_cast<Atom*>(propStr);
+	} 
+
+	return nullptr;
 }
 
 void WindowManager::registerDock(Window w) {
