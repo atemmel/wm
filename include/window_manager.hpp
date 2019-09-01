@@ -50,9 +50,7 @@ class WindowManager {
 		//Constants
 		constexpr static int nWorkspaces = static_cast<int>(Ws::N);
 		constexpr static auto modifierMask = Mod1Mask;
-		constexpr static unsigned int borderWidth = 5;
-		constexpr static unsigned long borderColor = 0x7D78A3;
-		constexpr static unsigned long bgColor = 0x000000;
+		constexpr static unsigned int borderWidth = 0;
 
 		//Init
 		WindowManager(Display *display);

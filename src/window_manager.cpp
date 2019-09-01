@@ -464,7 +464,6 @@ bool WindowManager::frame(Window w, bool createdBefore) {
 			None,
 			None);
 
-	//LogDebug << "Framed window " << w << " [" << frame << "]\n";
 	LogDebug << "Framed window " << w << '\n';
 	return true;
 }
@@ -477,7 +476,6 @@ void WindowManager::unframe(const Client &client) {
 	erase(client.window);
 	focusLast();
 
-	//LogDebug << "Unframed Window" << client.window << " [" << client.border << "]\n";
 	LogDebug << "Unframed Window" << client.window << '\n';
 }
 
