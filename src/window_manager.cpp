@@ -142,6 +142,12 @@ void WindowManager::run() {
 		XEvent e;
 		XNextEvent(_display, &e);
 
+		LogDebug << "Clients:\n";
+		for(const auto &c : _clients) {
+			LogDebug << '\t' << c.window << '\n';
+		}
+		LogDebug << "Total clients: " << _clients.size() << '\n';
+
 		switch(e.type) {
 			case ConfigureRequest:
 				onConfigureRequest(e.xconfigurerequest);
@@ -237,11 +243,6 @@ void WindowManager::onMapRequest(const XMapRequestEvent &e) {
 }
 
 void WindowManager::onUnmapNotify(const XUnmapEvent &e) {
-	if(e.event == _root) {
-		LogDebug << "Ignore UnmapNotify for reparented pre-existing window " << e.window << '\n';
-		return;
-	}
-
 	if(!exists(e.window) ) {	//TODO: Rewrite this so there is no double lookup
 		LogDebug << "Ignore UnmapNotify for non-client window " << e.window << '\n';
 		return;
@@ -434,7 +435,6 @@ bool WindowManager::frame(Window w, bool createdBefore) {
 
 	_clients.push_back({
 		w, 
-		//frame, 
 		_currentWorkspace,
 		{attrs.x, attrs.y},
 		{attrs.width, attrs.height},
@@ -468,19 +468,14 @@ bool WindowManager::frame(Window w, bool createdBefore) {
 			None,
 			None);
 
-	LogDebug << "Framed window " << w << '\n';
+	LogDebug << "Framed window: " << w << '\n';
 	return true;
 }
 
 void WindowManager::unframe(const Client &client) {
-
-	XUnmapWindow(_display, client.window);
-
-	XDestroyWindow(_display, client.window);
 	erase(client.window);
 	focusLast();
-
-	LogDebug << "Unframed Window" << client.window << '\n';
+	LogDebug << "Unframed Window: " << client.window << '\n';
 }
 
 void WindowManager::switchWorkspace(int workspace) {
