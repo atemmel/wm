@@ -1,4 +1,4 @@
-#define LOG_DEBUG 0
+#define LOG_DEBUG 1
 #define LOG_ERROR 1
 #include "event.hpp"
 #include "log.hpp"
@@ -194,9 +194,12 @@ void WindowManager::run() {
 }
 
 int WindowManager::onXError(Display *display, XErrorEvent *e) { 
+	std::string str(256, '\0');
+	XGetErrorText(display, e->error_code, str.data(), str.size( ));
 	LogDebug << "X error: " << static_cast<int>(e->error_code) 
 		<< " : " << static_cast<int>(e->request_code)
 		<< " : " << static_cast<int>(e->resourceid) << '\n';
+	LogDebug << "XGetErrorText: " << str << '\n';
 	return 0; 
 }
 
