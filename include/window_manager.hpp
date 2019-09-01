@@ -101,6 +101,7 @@ class WindowManager {
 		Client *_focused;
 		Screen *_screen;
 		static bool _wmDetected;
+		bool _running = true;
 		int _currentWorkspace = 0;
 		int _lowerBorder = 0;
 		int _upperBorder = 0;

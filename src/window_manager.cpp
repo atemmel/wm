@@ -124,7 +124,7 @@ void WindowManager::run() {
 			},
 			[&](long *arg) {	//Exit
 				LogDebug << "Exit\n";
-				std::exit(EXIT_SUCCESS);
+				_running = false;
 			},
 			[&](long *arg) {	//Focus next
 				LogDebug << "Focus next\n";
@@ -138,7 +138,7 @@ void WindowManager::run() {
 
 	LogDebug << "All clear, wm starting\n";
 	/*	Loop	*/
-	while(true) {
+	while(_running) {
 		XEvent e;
 		XNextEvent(_display, &e);
 
@@ -186,6 +186,10 @@ void WindowManager::run() {
 			default:
 				break;
 		}
+	}
+
+	for(const auto &c : _clients) {
+		unframe(c);
 	}
 }
 
