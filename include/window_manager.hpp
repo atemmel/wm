@@ -16,7 +16,6 @@ extern "C" {
 
 struct Client {
 	Window window;		//Handle to window
-	Window border;		//Handle to border
 	int workspace;		//Workspace index
 	Vector2 restore;	//"Old" coordinates
 	Vector2 size;		//Dimension

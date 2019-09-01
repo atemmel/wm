@@ -258,7 +258,7 @@ void WindowManager::onButtonPress(const XButtonEvent &e) {
 
 	XGetGeometry(
 			_display,
-			client.border,
+			client.window,
 			&returned,
 			&pos.x, &pos.y,
 			&w, &h,
@@ -292,7 +292,7 @@ void WindowManager::onMotionNotify(const XMotionEvent &e) {
 		client.position = Vector2(newPos.x, newPos.y);
 		XMoveWindow(
 				_display,
-				client.border,
+				client.window,
 				newPos.x,
 				newPos.y);
 
@@ -308,17 +308,12 @@ void WindowManager::onMotionNotify(const XMotionEvent &e) {
 				_display,
 				e.window,
 				newSize.x, newSize.y);
-		//One for the border
-		XResizeWindow(
-				_display,
-				client.border,
-				newSize.x, newSize.y);
 	}
 }
 
 void WindowManager::focus(Client &client) {
 	_focused = &client;
-	XRaiseWindow(_display, client.border);
+	XRaiseWindow(_display, client.window);
 	XSetInputFocus(_display, client.window, RevertToParent, CurrentTime);
 }
 
@@ -410,20 +405,22 @@ bool WindowManager::frame(Window w, bool createdBefore) {
 		attrs.height -= dy;
 	}
 
-	const Window frame = XCreateSimpleWindow(
-			_display,
-			_root,
-			attrs.x,
-			attrs.y,
-			attrs.width,
-			attrs.height,
-			borderWidth,
-			borderColor,
-			bgColor);
+	XMoveWindow(
+		_display,
+		w,
+		attrs.x,
+		attrs.y);
+
+	XResizeWindow(
+		_display, 
+		w, 
+		attrs.width, 
+		attrs.height);
+
 
 	XSelectInput(
 			_display,
-			frame,
+			w,
 			SubstructureRedirectMask | SubstructureNotifyMask);
 
 	XSelectInput(
@@ -431,16 +428,9 @@ bool WindowManager::frame(Window w, bool createdBefore) {
 			w,
 			EnterWindowMask);
 
-	XReparentWindow(
-			_display,
-			w,
-			frame,
-			0, 0);
-
-	XMapWindow(_display, frame);
 	_clients.push_back({
 		w, 
-		frame, 
+		//frame, 
 		_currentWorkspace,
 		{attrs.x, attrs.y},
 		{attrs.width, attrs.height},
@@ -474,19 +464,21 @@ bool WindowManager::frame(Window w, bool createdBefore) {
 			None,
 			None);
 
-	LogDebug << "Framed window " << w << " [" << frame << "]\n";
+	//LogDebug << "Framed window " << w << " [" << frame << "]\n";
+	LogDebug << "Framed window " << w << '\n';
 	return true;
 }
 
 void WindowManager::unframe(const Client &client) {
 
-	XUnmapWindow(_display, client.border);
+	XUnmapWindow(_display, client.window);
 
-	XDestroyWindow(_display, client.border);
+	XDestroyWindow(_display, client.window);
 	erase(client.window);
 	focusLast();
 
-	LogDebug << "Unframed Window" << client.window << " [" << client.border << "]\n";
+	//LogDebug << "Unframed Window" << client.window << " [" << client.border << "]\n";
+	LogDebug << "Unframed Window" << client.window << '\n';
 }
 
 void WindowManager::switchWorkspace(int workspace) {
@@ -510,14 +502,14 @@ void WindowManager::switchWorkspace(int workspace) {
 
 void WindowManager::hide(Client &client) {
 	XWindowAttributes xattr;
-	XGetWindowAttributes(_display, client.border, &xattr);
+	XGetWindowAttributes(_display, client.window, &xattr);
 
 	client.restore = {xattr.x, xattr.y};
 
 	//Big brain window hide
 	XMoveWindow(
 		_display,
-		client.border,
+		client.window,
 		xattr.x + _screen->width,
 		xattr.y + _screen->height);
 }
@@ -525,7 +517,7 @@ void WindowManager::hide(Client &client) {
 void WindowManager::show(const Client &client) {
 	XMoveWindow(
 		_display,
-		client.border,
+		client.window,
 		client.restore.x,
 		client.restore.y);
 }
@@ -557,11 +549,6 @@ void WindowManager::zoomClient(Client &client) {
 	Vector2 position = client.fullscreen ? client.position 
 		: Vector2(0, _upperBorder);
 
-	XResizeWindow(
-			_display, 
-			client.border, 
-			size.x, 
-			size.y);
 
 	XResizeWindow(
 			_display, 
@@ -571,7 +558,7 @@ void WindowManager::zoomClient(Client &client) {
 
 	XMoveWindow(
 			_display,
-			client.border,
+			client.window,
 			position.x,
 			position.y);
 
