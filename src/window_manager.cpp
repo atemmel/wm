@@ -1,4 +1,4 @@
-#define LOG_DEBUG 1
+#define LOG_DEBUG 0
 #define LOG_ERROR 1
 #include "event.hpp"
 #include "log.hpp"
@@ -588,20 +588,11 @@ void WindowManager::registerDock(Window w) {
 	XWindowAttributes xattr;
 	XGetWindowAttributes(_display, w, &xattr);
 
-	unsigned int lowerRadius = xattr.height,
-				 upperRadius = xattr.height;
-
 	if(xattr.y == 0) {
-		lowerRadius = _lowerBorder;
+		_upperBorder = xattr.height;
 	} else {
-		upperRadius = _upperBorder;
+		_lowerBorder = xattr.height;
 	}
-
-	setOuterBorder(upperRadius, lowerRadius);
-}
-
-void WindowManager::setOuterBorder(int upper, int lower) {
-	_upperBorder = upper, _lowerBorder = lower;
 }
 
 constexpr int WindowManager::workspaceMap(Direction dir) const {

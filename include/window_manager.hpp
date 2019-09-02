@@ -81,7 +81,6 @@ class WindowManager {
 		void zoomClient(Client &client);
 		Atom *getWindowProperty(Window w) const;
 		void registerDock(Window w);
-		void setOuterBorder(int upper, int lower);
 		constexpr int workspaceMap(Direction dir) const;
 
 		//Helper functions
