@@ -326,6 +326,8 @@ void WindowManager::onMotionNotify(const XMotionEvent &e) {
 
 void WindowManager::focus(Client &client) {
 	_focused = &client;
+	//XChangeProperty(_display, _root, _netAtoms.activeWindow, XA_WINDOW, 32, PropModeReplace,
+			//reinterpret_cast<unsigned char*>(client.window), 1);
 	XRaiseWindow(_display, client.window);
 	XSetInputFocus(_display, client.window, RevertToParent, CurrentTime);
 }
