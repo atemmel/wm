@@ -97,7 +97,7 @@ void WindowManager::run() {
 			reinterpret_cast<const unsigned char*>(&_check), 1);
 
 	//Set all supported net atoms
-	XChangeProperty(_display, _root, _netAtoms.WMSupported, XA_ATOM, 32, PropModeReplace,
+	XChangeProperty(_display, _root, _netAtoms.supported, XA_ATOM, 32, PropModeReplace,
 			reinterpret_cast<const unsigned char*>(&_netAtoms), _netAtoms.size() );
 
 	//IPC event table

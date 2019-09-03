@@ -1,7 +1,8 @@
 #include "atoms.hpp"
 
 NetAtom::NetAtom(Display *display) :
-WMSupported    (XInternAtom(display, "_NET_SUPPORTED", False)),
+supported      (XInternAtom(display, "_NET_SUPPORTED", False)),
+activeWindow   (XInternAtom(display, "_NET_ACTIVE_WINDOW", False)),
 WMCheck        (XInternAtom(display, "_NET_SUPPORTING_WM_CHECK", False)),
 WMName         (XInternAtom(display, "_NET_WM_NAME", False)),
 WMWindowType   (XInternAtom(display, "_NET_WM_WINDOW_TYPE", False)),

@@ -21,7 +21,8 @@ struct NetAtom {
 	size_t size() const;
 	//Further sources
 	//https://specifications.freedesktop.org/wm-spec/1.3/ar01s03.html
-	Atom WMSupported;
+	Atom supported;
+	Atom activeWindow;
 	Atom WMCheck;
 	Atom WMName;
 	Atom WMWindowType;
