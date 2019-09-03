@@ -25,6 +25,7 @@ struct Client {
 
 class WindowManager {
 	public:
+		using Clients = std::vector<Client>;
 		static std::unique_ptr<WindowManager> create();
 		~WindowManager();
 		void run();
@@ -85,12 +86,11 @@ class WindowManager {
 
 		//Helper functions
 		void printLayout() const;
-		bool exists(Window w) const;
 		void erase(Window w);
-		Client &find(Window w);
+		Clients::iterator find(Window w);
 
 		//Containers
-		std::vector<Client> _clients;
+		Clients _clients;
 
 		//Near-primitives
 		Vector2 startCursorPos, startWindowPos, startWindowSize;

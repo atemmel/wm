@@ -13,6 +13,8 @@
 #include <string>
 #include <array>
 
+using Clients = WindowManager::Clients;
+
 bool WindowManager::_wmDetected = false;
 
 std::unique_ptr<WindowManager> WindowManager::create() {
@@ -225,10 +227,9 @@ void WindowManager::onConfigureRequest(const XConfigureRequestEvent &e) {
 	changes.sibling = e.above;
 	changes.stack_mode = e.detail;
 
-	if(exists(e.window)) {	//TODO: Rewrite this so there is no double lookup
-		Client client = find(e.window);
-		client.size = Vector2{e.width, e.height};
-		client.position = Vector2{e.x, e.y};
+	if(auto client = find(e.window); client != _clients.end() ) {
+		client->size = Vector2{e.width, e.height};
+		client->position = Vector2{e.x, e.y};
 		XConfigureWindow(_display, e.window, e.value_mask, &changes);
 		LogDebug << "Resize " << e.window << " to w:" 
 			<< e.width << " h:" << e.height << '\n';
@@ -241,21 +242,22 @@ void WindowManager::onMapRequest(const XMapRequestEvent &e) {
 	bool framed = frame(e.window, false);
 	XMapWindow(_display, e.window);
 	if(framed) {
-		focus(find(e.window) );
+		focus(*find(e.window) );
 	}
 }
 
 void WindowManager::onUnmapNotify(const XUnmapEvent &e) {
-	if(!exists(e.window) ) {	//TODO: Rewrite this so there is no double lookup
+	auto client = find(e.window);
+	if(client == _clients.end() ) {
 		LogDebug << "Ignore UnmapNotify for non-client window " << e.window << '\n';
 		return;
 	}
 
-	unframe(find(e.window));
+	unframe(*client);
 }
 
 void WindowManager::onButtonPress(const XButtonEvent &e) {
-	const Client &client = find(e.window);
+	auto client = find(e.window);
 	LogDebug << "Click in window " << e.window << '\n';
 
 	startCursorPos = {e.x_root, e.y_root};
@@ -266,7 +268,7 @@ void WindowManager::onButtonPress(const XButtonEvent &e) {
 
 	XGetGeometry(
 			_display,
-			client.window,
+			client->window,
 			&returned,
 			&pos.x, &pos.y,
 			&w, &h,
@@ -285,22 +287,25 @@ void WindowManager::onFocusIn(const XFocusChangeEvent &e) {
 
 void WindowManager::onEnterNotify(const XEnterWindowEvent &e) {
 	LogDebug << "Entered window " << e.window << '\n';
-	focus(find(e.window));
+	if(_focused && _focused->fullscreen) {
+		return;
+	}
+	focus(*find(e.window));
 }
 
 void WindowManager::onMotionNotify(const XMotionEvent &e) {
 	const Vector2 cursorPos = {e.x_root, e.y_root};
-	Client &client = find(e.window);
+	auto client = find(e.window);
 
-	if(client.fullscreen) return;
+	if(client->fullscreen) return;
 
 	if(e.state & Button1Mask) {	//Move window
 		const Vector2 delta = cursorPos - startCursorPos;
 		const Vector2 newPos = startWindowPos + delta;
-		client.position = Vector2(newPos.x, newPos.y);
+		client->position = Vector2(newPos.x, newPos.y);
 		XMoveWindow(
 				_display,
-				client.window,
+				client->window,
 				newPos.x,
 				newPos.y);
 
@@ -622,14 +627,8 @@ void WindowManager::printLayout() const {
 		<< "    "	<< 			p(South) << '\n';
 }
 
-bool WindowManager::exists(Window w) const {
+Clients::iterator WindowManager::find(Window w) {
 	return std::find_if(_clients.begin(), _clients.end(), [&](const Client &client) {
-				return client.window == w;
-		}) != _clients.end();
-}
-
-Client &WindowManager::find(Window w) {
-	return *std::find_if(_clients.begin(), _clients.end(), [&](const Client &client) {
 				return client.window == w;
 		});
 }
