@@ -23,6 +23,8 @@ struct NetAtom {
 	//https://specifications.freedesktop.org/wm-spec/1.3/ar01s03.html
 	Atom supported;
 	Atom activeWindow;
+	Atom numberOfDesktops;
+	Atom currentDesktop;
 	Atom WMCheck;
 	Atom WMName;
 	Atom WMWindowType;

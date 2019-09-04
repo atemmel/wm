@@ -1,8 +1,9 @@
 #define LOG_DEBUG 0
 #define LOG_ERROR 1
+
+#include "window_manager.hpp"
 #include "event.hpp"
 #include "log.hpp"
-#include "window_manager.hpp"
 
 #include <X11/Xutil.h>
 #include <X11/Xatom.h>
@@ -99,6 +100,15 @@ void WindowManager::run() {
 	//Set all supported net atoms
 	XChangeProperty(_display, _root, _netAtoms.supported, XA_ATOM, 32, PropModeReplace,
 			reinterpret_cast<const unsigned char*>(&_netAtoms), _netAtoms.size() );
+
+	//Set number of desktops
+	unsigned long data = 5;
+	XChangeProperty(_display, _root, _netAtoms.numberOfDesktops, XA_CARDINAL, 32, 
+			PropModeReplace, reinterpret_cast<unsigned char*>(&data), 1);
+
+	data = 0;
+	XChangeProperty(_display, _root, _netAtoms.currentDesktop, XA_CARDINAL, 32,
+			PropModeReplace, reinterpret_cast<unsigned char*>(&data), 1);
 
 	//IPC event table
 	std::array<std::function<void(long*)>, static_cast<size_t>(Event::NEvents)>
@@ -325,9 +335,12 @@ void WindowManager::onMotionNotify(const XMotionEvent &e) {
 }
 
 void WindowManager::focus(Client &client) {
+	XDeleteProperty(_display, _root, _netAtoms.activeWindow);
+	LogDebug << "Deleting activeWindow property\n";
 	_focused = &client;
-	//XChangeProperty(_display, _root, _netAtoms.activeWindow, XA_WINDOW, 32, PropModeReplace,
-			//reinterpret_cast<unsigned char*>(client.window), 1);
+	XChangeProperty(_display, _root, _netAtoms.activeWindow, XA_WINDOW, 32, PropModeReplace,
+			reinterpret_cast<unsigned char*>(&client.window), 1);
+	LogDebug << "Changing activeWindow property\n";
 	XRaiseWindow(_display, client.window);
 	XSetInputFocus(_display, client.window, RevertToParent, CurrentTime);
 }
@@ -341,6 +354,7 @@ void WindowManager::focusLast() {
 	}
 
 	_focused = nullptr;
+	XDeleteProperty(_display, _root, _netAtoms.activeWindow);
 	XSetInputFocus(_display, _root, RevertToPointerRoot, CurrentTime);
 }
 
@@ -502,6 +516,10 @@ void WindowManager::switchWorkspace(int workspace) {
 			show(client);
 		}
 	}
+	
+	unsigned long data = static_cast<unsigned long>(workspace);
+	XChangeProperty(_display, _root, _netAtoms.currentDesktop, XA_CARDINAL, 32,
+			PropModeReplace, reinterpret_cast<unsigned char*>(&data), 1);
 
 	focusLast();
 	printLayout();
