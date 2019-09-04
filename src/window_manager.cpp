@@ -102,7 +102,7 @@ void WindowManager::run() {
 			reinterpret_cast<const unsigned char*>(&_netAtoms), _netAtoms.size() );
 
 	//Set number of desktops
-	unsigned long data = 5;
+	unsigned long data = 4;
 	XChangeProperty(_display, _root, _netAtoms.numberOfDesktops, XA_CARDINAL, 32, 
 			PropModeReplace, reinterpret_cast<unsigned char*>(&data), 1);
 
