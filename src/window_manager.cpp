@@ -110,6 +110,10 @@ void WindowManager::run() {
 	XChangeProperty(_display, _root, _netAtoms.currentDesktop, XA_CARDINAL, 32,
 			PropModeReplace, reinterpret_cast<unsigned char*>(&data), 1);
 
+	//Read class specific behaviour
+	_classMap.insert(std::make_pair("firefox", static_cast<int>(Ws::North) ) );
+	_classMap.insert(std::make_pair("discord", static_cast<int>(Ws::East) ) );
+
 	//IPC event table
 	std::array<std::function<void(long*)>, static_cast<size_t>(Event::NEvents)>
 		events = {
@@ -465,6 +469,16 @@ bool WindowManager::frame(Window w, bool createdBefore) {
 		{attrs.x, attrs.y},
 		false
 	});
+	
+	XClassHint hint;
+	XGetClassHint(_display, w, &hint);
+
+	if(auto it = _classMap.find(hint.res_class); it != _classMap.end() ) {
+		moveClient(_clients.back(), it->second);
+	}
+
+	XFree(hint.res_class);
+	XFree(hint.res_name);
 
 	//Grab Alt + LMB
 	XGrabButton(

@@ -26,6 +26,8 @@ struct Client {
 class WindowManager {
 	public:
 		using Clients = std::vector<Client>;
+		using ClassMap = std::unordered_map<std::string, int>;
+
 		static std::unique_ptr<WindowManager> create();
 		~WindowManager();
 		void run();
@@ -91,6 +93,7 @@ class WindowManager {
 
 		//Containers
 		Clients _clients;
+		ClassMap _classMap;
 
 		//Near-primitives
 		Vector2 startCursorPos, startWindowPos, startWindowSize;
